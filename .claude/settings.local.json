@@ -403,7 +403,10 @@
       "Read(/C:\\Users\\roo12\\Desktop\\AiExperiments\\src\\Presentation\\Shared/**)",
       "Read(/C:\\Users\\roo12\\Desktop\\AiExperiments\\src\\Presentation\\Shared\\Models/**)",
       "Read(/C:\\Users\\roo12\\Desktop\\AiExperiments\\src\\Presentation\\Client\\Pages\\Combat/**)",
-      "Read(/C:\\Users\\roo12\\Desktop\\AiExperiments\\src\\Presentation\\Server\\Hubs/**)"
+      "Read(/C:\\Users\\roo12\\Desktop\\AiExperiments\\src\\Presentation\\Server\\Hubs/**)",
+      "Read(/C:\\Users\\roo12\\Desktop\\AiExperiments\\src\\Presentation\\Client\\Pages\\Combat/**)",
+      "Read(/C:\\Users\\roo12\\Desktop\\AiExperiments\\src\\Presentation\\Client\\Pages\\Combat/**)",
+      "Read(/C:\\Users\\roo12\\Desktop\\AiExperiments\\src\\Presentation\\Client\\Pages\\Combat/**)"
     ],
     "deny": [],
     "ask": []

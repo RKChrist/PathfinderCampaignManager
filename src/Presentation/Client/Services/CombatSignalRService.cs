@@ -18,6 +18,8 @@ public class CombatSignalRService : IAsyncDisposable
         var baseAddress = _httpClient.BaseAddress?.ToString().TrimEnd('/') ?? "http://localhost:7082";
         var hubUrl = $"{baseAddress}/combathub";
         
+        Console.WriteLine($"Initializing SignalR connection to: {hubUrl}");
+        
         _hubConnection = new HubConnectionBuilder()
             .WithUrl(hubUrl, options =>
             {
@@ -25,13 +27,15 @@ public class CombatSignalRService : IAsyncDisposable
                 {
                     options.AccessTokenProvider = () => Task.FromResult(accessToken);
                 }
-                // Important: Allow credentials for CORS
-                options.UseDefaultCredentials = true;
+                // Note: UseDefaultCredentials is not supported in Blazor WebAssembly
+                // Authentication should be handled via access tokens instead
             })
             .WithAutomaticReconnect()
             .Build();
 
+        Console.WriteLine("Starting SignalR connection...");
         await _hubConnection.StartAsync();
+        Console.WriteLine($"SignalR connection state: {_hubConnection.State}");
     }
 
     public async Task JoinCombatAsync(string combatId)

@@ -251,7 +251,7 @@
 @code {
     [Parameter] public Guid? CombatId { get; set; }
 
-    private CombatSession? _session;
+    private CombatSession? _session = new CombatSession { Participants = new List<CombatParticipant>() };
     private bool _isConnected = false;
     private string _errorMessage = string.Empty;
     private bool _showAddModal = false;
@@ -266,6 +266,9 @@
 
         try
         {
+            _errorMessage = "Initializing SignalR connection...";
+            StateHasChanged();
+            
             await SignalRService.InitializeAsync();
             SignalRService.SubscribeToEvents();
             
@@ -283,12 +286,23 @@
             
             if (_isConnected)
             {
+                _errorMessage = "Joining combat session...";
+                StateHasChanged();
+                
                 await SignalRService.JoinCombatAsync(CombatId.ToString()!);
+                
+                _errorMessage = string.Empty;
+                StateHasChanged();
+            }
+            else
+            {
+                _errorMessage = "SignalR connection failed - not connected";
             }
         }
         catch (Exception ex)
         {
-            _errorMessage = $"Failed to connect to SignalR: {ex.Message}";
+            _errorMessage = $"Failed to connect to SignalR: {ex.Message}. Stack: {ex.StackTrace}";
+            Console.WriteLine($"SignalR Error: {ex}");
         }
     }
 
@@ -407,9 +421,20 @@
     // SignalR Event Handlers
     private async void OnCombatStateUpdated(CombatSession session)
     {
-        _session = session;
-        _errorMessage = string.Empty;
-        await InvokeAsync(StateHasChanged);
+        try
+        {
+            if (session != null)
+            {
+                _session = session;
+                _errorMessage = string.Empty;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error updating combat state: {ex.Message}";
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     private async void OnInitiativeUpdated(string participantId, int initiative)
