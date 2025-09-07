@@ -1,0 +1,331 @@
+@page "/classes"
+@using PathfinderCampaignManager.Domain.Entities.Auth
+@using PathfinderCampaignManager.Presentation.Client.Components.Auth
+
+<PageTitle>Classes - Pathfinder Campaign Manager</PageTitle>
+
+<div class="classes-index">
+    <div class="page-header">
+        <h1><i class="fas fa-users"></i> Pathfinder 2E Classes</h1>
+        <p class="lead">Choose from 23 unique classes, each with their own playstyle and abilities</p>
+    </div>
+
+    <div class="classes-grid">
+        <!-- Core Classes -->
+        <div class="class-category mb-5">
+            <h2 class="category-title">Core Classes</h2>
+            <div class="row">
+                <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                    <div class="class-card">
+                        <div class="class-icon alchemist-color">
+                            <i class="fas fa-flask"></i>
+                        </div>
+                        <h4>Alchemist</h4>
+                        <p>Master of magical formulas and explosive concoctions</p>
+                        <div class="class-actions">
+                            <a href="/classes/alchemist" class="btn btn-primary btn-sm">View Details</a>
+                            <a href="/character-wizard?class=alchemist" class="btn btn-outline-primary btn-sm">Create</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                    <div class="class-card">
+                        <div class="class-icon barbarian-color">
+                            <i class="fas fa-axe-battle"></i>
+                        </div>
+                        <h4>Barbarian</h4>
+                        <p>Furious warrior who fights with primal rage</p>
+                        <div class="class-actions">
+                            <a href="/classes/barbarian" class="btn btn-primary btn-sm">View Details</a>
+                            <a href="/character-wizard?class=barbarian" class="btn btn-outline-primary btn-sm">Create</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                    <div class="class-card">
+                        <div class="class-icon bard-color">
+                            <i class="fas fa-music"></i>
+                        </div>
+                        <h4>Bard</h4>
+                        <p>Charismatic performer who weaves magic through art</p>
+                        <div class="class-actions">
+                            <a href="/classes/bard" class="btn btn-primary btn-sm">View Details</a>
+                            <a href="/character-wizard?class=bard" class="btn btn-outline-primary btn-sm">Create</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                    <div class="class-card">
+                        <div class="class-icon champion-color">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <h4>Champion</h4>
+                        <p>Divine warrior bound by a sacred code</p>
+                        <div class="class-actions">
+                            <a href="/classes/champion" class="btn btn-primary btn-sm">View Details</a>
+                            <a href="/character-wizard?class=champion" class="btn btn-outline-primary btn-sm">Create</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                    <div class="class-card">
+                        <div class="class-icon cleric-color">
+                            <i class="fas fa-cross"></i>
+                        </div>
+                        <h4>Cleric</h4>
+                        <p>Devoted servant of a deity who channels divine power</p>
+                        <div class="class-actions">
+                            <a href="/classes/cleric" class="btn btn-primary btn-sm">View Details</a>
+                            <a href="/character-wizard?class=cleric" class="btn btn-outline-primary btn-sm">Create</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                    <div class="class-card">
+                        <div class="class-icon druid-color">
+                            <i class="fas fa-leaf"></i>
+                        </div>
+                        <h4>Druid</h4>
+                        <p>Guardian of nature who commands primal magic</p>
+                        <div class="class-actions">
+                            <a href="/classes/druid" class="btn btn-primary btn-sm">View Details</a>
+                            <a href="/character-wizard?class=druid" class="btn btn-outline-primary btn-sm">Create</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                    <div class="class-card">
+                        <div class="class-icon fighter-color">
+                            <i class="fas fa-sword"></i>
+                        </div>
+                        <h4>Fighter</h4>
+                        <p>Master of weapons and combat techniques</p>
+                        <div class="class-actions">
+                            <a href="/classes/fighter" class="btn btn-primary btn-sm">View Details</a>
+                            <a href="/character-wizard?class=fighter" class="btn btn-outline-primary btn-sm">Create</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                    <div class="class-card">
+                        <div class="class-icon monk-color">
+                            <i class="fas fa-fist-raised"></i>
+                        </div>
+                        <h4>Monk</h4>
+                        <p>Disciplined warrior who fights with inner power</p>
+                        <div class="class-actions">
+                            <a href="/classes/monk" class="btn btn-primary btn-sm">View Details</a>
+                            <a href="/character-wizard?class=monk" class="btn btn-outline-primary btn-sm">Create</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                    <div class="class-card">
+                        <div class="class-icon ranger-color">
+                            <i class="fas fa-bow-arrow"></i>
+                        </div>
+                        <h4>Ranger</h4>
+                        <p>Skilled tracker and hunter of the wilderness</p>
+                        <div class="class-actions">
+                            <a href="/classes/ranger" class="btn btn-primary btn-sm">View Details</a>
+                            <a href="/character-wizard?class=ranger" class="btn btn-outline-primary btn-sm">Create</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                    <div class="class-card">
+                        <div class="class-icon rogue-color">
+                            <i class="fas fa-mask"></i>
+                        </div>
+                        <h4>Rogue</h4>
+                        <p>Cunning opportunist who strikes from the shadows</p>
+                        <div class="class-actions">
+                            <a href="/classes/rogue" class="btn btn-primary btn-sm">View Details</a>
+                            <a href="/character-wizard?class=rogue" class="btn btn-outline-primary btn-sm">Create</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                    <div class="class-card">
+                        <div class="class-icon sorcerer-color">
+                            <i class="fas fa-sparkles"></i>
+                        </div>
+                        <h4>Sorcerer</h4>
+                        <p>Innate spellcaster with raw magical talent</p>
+                        <div class="class-actions">
+                            <a href="/classes/sorcerer" class="btn btn-primary btn-sm">View Details</a>
+                            <a href="/character-wizard?class=sorcerer" class="btn btn-outline-primary btn-sm">Create</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                    <div class="class-card">
+                        <div class="class-icon wizard-color">
+                            <i class="fas fa-hat-wizard"></i>
+                        </div>
+                        <h4>Wizard</h4>
+                        <p>Scholar of the arcane who masters spells through study</p>
+                        <div class="class-actions">
+                            <a href="/classes/wizard" class="btn btn-primary btn-sm">View Details</a>
+                            <a href="/character-wizard?class=wizard" class="btn btn-outline-primary btn-sm">Create</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Advanced Classes -->
+        <AuthorizedView RequiredRole="UserRole.Player">
+            <div class="class-category mb-5">
+                <h2 class="category-title">Advanced Classes</h2>
+                <div class="row">
+                    <!-- I'll add placeholders for the remaining 11 advanced classes -->
+                    <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                        <div class="class-card coming-soon">
+                            <div class="class-icon">
+                                <i class="fas fa-gun"></i>
+                            </div>
+                            <h4>Gunslinger</h4>
+                            <p>Expert marksman with firearms and black powder</p>
+                            <div class="class-actions">
+                                <span class="badge badge-secondary">Coming Soon</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Additional advanced classes would go here -->
+                    <div class="col-12">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>More Classes Coming Soon:</strong> Gunslinger, Inventor, Investigator, Kineticist, Magus, Oracle, Psychic, Summoner, Swashbuckler, Thaumaturge, and Witch pages are in development.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </AuthorizedView>
+    </div>
+
+    <!-- DM Tools Section -->
+    <AuthorizedView RequiredRole="UserRole.DM">
+        <div class="dm-tools-section card">
+            <div class="card-header bg-warning">
+                <h3><i class="fas fa-tools"></i> DM Tools</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <a href="/rules/equipment" class="btn btn-outline-primary btn-lg w-100 mb-2">
+                            <i class="fas fa-shield-alt"></i> Equipment & Armor
+                        </a>
+                    </div>
+                    <div class="col-md-4">
+                        <a href="/rules/quick-reference" class="btn btn-outline-primary btn-lg w-100 mb-2">
+                            <i class="fas fa-book"></i> Quick Rules Reference
+                        </a>
+                    </div>
+                    <div class="col-md-4">
+                        <a href="/rules/proficiency" class="btn btn-outline-primary btn-lg w-100 mb-2">
+                            <i class="fas fa-chart-line"></i> Proficiency System
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </AuthorizedView>
+</div>
+
+<style>
+    .classes-index {
+        padding: 20px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        min-height: 100vh;
+    }
+
+    .page-header {
+        text-align: center;
+        margin-bottom: 3rem;
+    }
+
+    .page-header h1 {
+        color: #495057;
+        margin-bottom: 1rem;
+    }
+
+    .category-title {
+        color: #343a40;
+        margin-bottom: 1.5rem;
+        border-bottom: 3px solid #007bff;
+        padding-bottom: 0.5rem;
+    }
+
+    .class-card {
+        background: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        text-align: center;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        height: 100%;
+        transition: transform 0.2s ease;
+    }
+
+    .class-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+
+    .class-card.coming-soon {
+        opacity: 0.7;
+        background: #f8f9fa;
+    }
+
+    .class-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        font-size: 1.5rem;
+        color: white;
+    }
+
+    .alchemist-color { background: #28a745; }
+    .barbarian-color { background: #dc3545; }
+    .bard-color { background: #fd7e14; }
+    .champion-color { background: #ffc107; color: #333 !important; }
+    .cleric-color { background: #6f42c1; }
+    .druid-color { background: #198754; }
+    .fighter-color { background: #6c757d; }
+    .monk-color { background: #17a2b8; }
+    .ranger-color { background: #20c997; }
+    .rogue-color { background: #495057; }
+    .sorcerer-color { background: #e83e8c; }
+    .wizard-color { background: #6f42c1; }
+
+    .class-card h4 {
+        color: #495057;
+        margin-bottom: 0.5rem;
+    }
+
+    .class-card p {
+        color: #6c757d;
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+    }
+
+    .class-actions .btn {
+        margin: 0.2rem;
+    }
+</style>

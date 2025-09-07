@@ -1,0 +1,167 @@
+@using PathfinderCampaignManager.Application.CharacterCreation.Models
+@using PathfinderCampaignManager.Domain.Enums
+
+<div class="pf2e-class-component cleric-class">
+    <div class="class-header">
+        <div class="class-icon">
+            <i class="fas fa-pray"></i>
+        </div>
+        <div class="class-info">
+            <h3 class="class-name">Cleric</h3>
+            <span class="class-role">Healer/Support</span>
+        </div>
+        <div class="class-rarity common">Common</div>
+    </div>
+
+    <div class="class-stats-grid">
+        <div class="stat-block">
+            <span class="stat-label">Hit Points</span>
+            <span class="stat-value">8 + Con modifier</span>
+        </div>
+        <div class="stat-block">
+            <span class="stat-label">Key Ability</span>
+            <span class="stat-value">Wisdom</span>
+        </div>
+        <div class="stat-block">
+            <span class="stat-label">Initial Proficiencies</span>
+            <span class="stat-value">Expert in divine spell DCs</span>
+        </div>
+        <div class="stat-block">
+            <span class="stat-label">Skills</span>
+            <span class="stat-value">2 + Int modifier</span>
+        </div>
+    </div>
+
+    <div class="class-description">
+        <p>
+            Deities work their will upon the world in infinite ways, and you serve as one of their most stalwart mortal servants. 
+            Blessed with divine magic, you live the ideals of your faith, adorn yourself with the symbols of your church, and train 
+            diligently to wield your deity's favored weapon.
+        </p>
+    </div>
+
+    @if (ShowDetails)
+    {
+        <div class="class-details-expanded">
+            <div class="spellcasting-info">
+                <h4>Divine Spellcasting</h4>
+                <div class="spell-details">
+                    <div class="spell-stat">
+                        <span class="label">Spell Tradition:</span>
+                        <span class="value">Divine</span>
+                    </div>
+                    <div class="spell-stat">
+                        <span class="label">Spell Ability:</span>
+                        <span class="value">Wisdom</span>
+                    </div>
+                    <div class="spell-stat">
+                        <span class="label">Spell Slots per Day:</span>
+                        <span class="value">1st: 2, Cantrips: 5</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="deity-selection">
+                <h4>Deity Selection</h4>
+                <p>Choose a deity to worship and gain access to their domain spells and favored weapon.</p>
+                <div class="deity-examples">
+                    <div class="deity-option">
+                        <h5>Sarenrae (The Dawnflower)</h5>
+                        <p><strong>Domains:</strong> Fire, Healing, Sun</p>
+                        <p><strong>Favored Weapon:</strong> Scimitar</p>
+                        <p><strong>Divine Font:</strong> Heal</p>
+                    </div>
+                    <div class="deity-option">
+                        <h5>Pharasma (Lady of Graves)</h5>
+                        <p><strong>Domains:</strong> Death, Fate, Healing</p>
+                        <p><strong>Favored Weapon:</strong> Dagger</p>
+                        <p><strong>Divine Font:</strong> Heal or Harm</p>
+                    </div>
+                    <div class="deity-option">
+                        <h5>Gorum (Our Lord in Iron)</h5>
+                        <p><strong>Domains:</strong> Destruction, Might, Zeal</p>
+                        <p><strong>Favored Weapon:</strong> Greatsword</p>
+                        <p><strong>Divine Font:</strong> Harm</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="class-abilities">
+                <h4>Class Features</h4>
+                <ul>
+                    <li><strong>Deity:</strong> Choose a deity and gain access to their domains</li>
+                    <li><strong>Divine Spellcasting:</strong> Cast divine spells using spell slots</li>
+                    <li><strong>Divine Font:</strong> Extra heal or harm spells</li>
+                    <li><strong>Domain Spells:</strong> Additional spells from your deity's domains</li>
+                    <li><strong>Anathema:</strong> Actions forbidden by your deity</li>
+                </ul>
+            </div>
+
+            <div class="progression-preview">
+                <h4>Level Progression Preview</h4>
+                <div class="progression-levels">
+                    <div class="level-marker">
+                        <span class="level">1st</span>
+                        <span class="feature">Divine spellcasting, deity, divine font</span>
+                    </div>
+                    <div class="level-marker">
+                        <span class="level">2nd</span>
+                        <span class="feature">Cleric feat, skill feat</span>
+                    </div>
+                    <div class="level-marker">
+                        <span class="level">3rd</span>
+                        <span class="feature">2nd-level spells, general feat, skill increase</span>
+                    </div>
+                    <div class="level-marker">
+                        <span class="level">5th</span>
+                        <span class="feature">3rd-level spells, alertness</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sample-builds">
+                <h4>Sample Builds</h4>
+                <div class="build-options">
+                    <div class="build-option">
+                        <h5>Battle Cleric</h5>
+                        <p>Front-line fighter with divine magic support</p>
+                        <div class="build-stats">
+                            <span class="build-stat">Wis 18, Str 14, Con 14</span>
+                        </div>
+                    </div>
+                    <div class="build-option">
+                        <h5>Support Healer</h5>
+                        <p>Focus on healing and battlefield control</p>
+                        <div class="build-stats">
+                            <span class="build-stat">Wis 18, Dex 14, Con 16</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="class-actions">
+        <button class="btn btn-primary" @onclick="SelectClass" disabled="@IsSelected">
+            @if (IsSelected)
+            {
+                <i class="fas fa-check"></i> <text>Selected</text>
+            }
+            else
+            {
+                <i class="fas fa-plus"></i> <text>Select Cleric</text>
+            }
+        </button>
+        <button class="btn btn-secondary" @onclick="ToggleDetails">
+            @if (ShowDetails)
+            {
+                <i class="fas fa-chevron-up"></i> <text>Less Details</text>
+            }
+            else
+            {
+                <i class="fas fa-chevron-down"></i> <text>More Details</text>
+            }
+        </button>
+    </div>
+</div>
+

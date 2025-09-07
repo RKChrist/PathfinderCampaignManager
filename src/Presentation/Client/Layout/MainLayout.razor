@@ -1,0 +1,74 @@
+﻿@using PathfinderCampaignManager.Presentation.Client.Components.HoverCards
+@using PathfinderCampaignManager.Presentation.Client.Components.Auth
+@using PathfinderCampaignManager.Presentation.Client.Services
+@inherits LayoutComponentBase
+@inject IJSRuntime JSRuntime
+@inject IAuthenticationService AuthService
+@implements IDisposable
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row px-4 d-flex justify-content-between align-items-center">
+            <div class="app-title d-flex align-items-center">
+                <i class="fas fa-dragon me-2 text-primary"></i>
+                <span class="fw-bold">Pathfinder Campaign Manager</span>
+            </div>
+            <div class="top-nav-actions">
+                <UserProfileMenu />
+            </div>
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+
+    <!-- Hover Card Manager -->
+    <HoverCardManager />
+</div>
+
+<script src="~/js/hoverCards.js"></script>
+
+<style>
+    .top-row {
+        background: white;
+        border-bottom: 1px solid #dee2e6;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        height: 3.5rem;
+    }
+
+    .app-title {
+        font-size: 1.1rem;
+        color: var(--bs-dark, #212529);
+    }
+
+    .app-title i {
+        font-size: 1.3rem;
+    }
+
+    .top-nav-actions {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+</style>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        // Initialize authentication on layout load
+        await AuthService.InitializeAuthenticationAsync();
+    }
+
+    public void Dispose()
+    {
+        // Clean up any resources if needed
+    }
+}

@@ -1,0 +1,138 @@
+@using PathfinderCampaignManager.Presentation.Client.Services
+@using PathfinderCampaignManager.Presentation.Client.Store.Auth
+@using Fluxor
+@inject IAuthenticationService AuthService
+@inject NavigationManager Navigation
+@inject IState<AuthState> AuthState
+@implements IDisposable
+
+@if (_isLoading)
+{
+    <div class="auth-loading">
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Checking authentication...</span>
+            </div>
+            <p class="mt-3 text-muted">Verifying access...</p>
+        </div>
+    </div>
+}
+else if (_isAuthenticated)
+{
+    @ChildContent
+}
+else
+{
+    @if (ShowUnauthorizedContent && UnauthorizedContent != null)
+    {
+        @UnauthorizedContent
+    }
+    else
+    {
+        <div class="auth-required">
+            <div class="text-center">
+                <div class="auth-icon mb-4">
+                    <i class="fas fa-lock fa-3x text-muted"></i>
+                </div>
+                <h3 class="mb-3">Authentication Required</h3>
+                <p class="text-muted mb-4">@(CustomMessage ?? "You need to be logged in to access this feature.")</p>
+                <div class="d-flex gap-2 justify-content-center">
+                    <a href="/login" class="btn btn-primary">
+                        <i class="fas fa-sign-in-alt me-2"></i>
+                        Sign In
+                    </a>
+                    @if (ShowRegisterButton)
+                    {
+                        <a href="/register" class="btn btn-outline-secondary">
+                            <i class="fas fa-user-plus me-2"></i>
+                            Register
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+}
+
+<style>
+    .auth-loading,
+    .auth-required {
+        min-height: 400px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 3rem;
+    }
+
+    .auth-icon {
+        opacity: 0.7;
+    }
+
+    .auth-required h3 {
+        color: var(--bs-dark, #212529);
+    }
+
+    .auth-required p {
+        max-width: 400px;
+        margin: 0 auto 1.5rem;
+    }
+</style>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? UnauthorizedContent { get; set; }
+    [Parameter] public bool ShowUnauthorizedContent { get; set; } = false;
+    [Parameter] public bool ShowRegisterButton { get; set; } = true;
+    [Parameter] public string? CustomMessage { get; set; }
+    [Parameter] public bool RedirectToLogin { get; set; } = false;
+
+    private bool _isLoading = true;
+    private bool _isAuthenticated = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthState.StateChanged += OnAuthStateChanged;
+        await CheckAuthentication();
+    }
+
+    private async Task CheckAuthentication()
+    {
+        try
+        {
+            _isLoading = true;
+            StateHasChanged();
+
+            _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+
+            if (RedirectToLogin && !_isAuthenticated)
+            {
+                var returnUrl = Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri));
+                Navigation.NavigateTo($"/login?returnUrl={returnUrl}");
+                return;
+            }
+        }
+        catch (Exception)
+        {
+            _isAuthenticated = false;
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async void OnAuthStateChanged(object sender, EventArgs e)
+    {
+        var newAuthState = AuthState.Value.IsAuthenticated;
+        if (_isAuthenticated != newAuthState)
+        {
+            await CheckAuthentication();
+        }
+    }
+
+    public void Dispose()
+    {
+        AuthState.StateChanged -= OnAuthStateChanged;
+    }
+}

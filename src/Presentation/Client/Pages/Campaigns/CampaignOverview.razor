@@ -1,0 +1,288 @@
+@page "/campaigns"
+@using PathfinderCampaignManager.Presentation.Client.Components.Auth
+@inject IJSRuntime JSRuntime
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@using System.Text.Json
+@using System.Net.Http.Headers
+@using System.ComponentModel.DataAnnotations
+
+<PageTitle>My Campaigns - Pathfinder Campaign Manager</PageTitle>
+
+<AuthGuard CustomMessage="You must be logged in to view your campaigns." RedirectToLogin="true">
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="display-6">My Campaigns</h1>
+            <p class="text-muted">Manage your Pathfinder campaigns and adventures</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <button class="btn btn-primary btn-lg" @onclick="ShowCreateCampaignModal">
+                <i class="fas fa-plus me-2"></i>
+                Create Campaign
+            </button>
+        </div>
+    </div>
+
+    @if (_isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading campaigns...</span>
+            </div>
+            <p class="mt-3 text-muted">Loading your campaigns...</p>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="alert alert-danger" role="alert">
+            @_errorMessage
+        </div>
+    }
+    else if (_campaigns?.Any() != true)
+    {
+        <div class="text-center py-5">
+            <div class="mb-4">
+                <i class="fas fa-dragon fa-4x text-muted"></i>
+            </div>
+            <h3>No Campaigns Yet</h3>
+            <p class="text-muted mb-4">Create your first campaign to begin your Pathfinder adventure!</p>
+            <button class="btn btn-primary btn-lg" @onclick="ShowCreateCampaignModal">
+                <i class="fas fa-plus me-2"></i>
+                Create Your First Campaign
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var campaign in _campaigns)
+            {
+                <div class="col-lg-4 col-md-6 mb-4">
+                    <div class="card campaign-card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">@campaign.Name</h5>
+                            @if (campaign.DMUserId == _currentUserId)
+                            {
+                                <span class="badge bg-warning text-dark">DM</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-info">Player</span>
+                            }
+                        </div>
+                        <div class="card-body">
+                            @if (!string.IsNullOrEmpty(campaign.Description))
+                            {
+                                <p class="card-text text-muted">@campaign.Description</p>
+                            }
+                            
+                            <div class="campaign-stats mb-3">
+                                <div class="row text-center">
+                                    <div class="col-4">
+                                        <div class="stat-number">@campaign.MemberCount</div>
+                                        <div class="stat-label">Members</div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="stat-number">@campaign.SessionCount</div>
+                                        <div class="stat-label">Sessions</div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="stat-number">
+                                            @if (campaign.LastActivityAt.HasValue)
+                                            {
+                                                @GetTimeSince(campaign.LastActivityAt.Value)
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">Never</span>
+                                            }
+                                        </div>
+                                        <div class="stat-label">Last Activity</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <div class="btn-group w-100" role="group">
+                                <button class="btn btn-outline-primary" @onclick="@(() => ViewCampaign(campaign.Id))">
+                                    <i class="fas fa-eye me-1"></i>
+                                    View
+                                </button>
+                                @if (campaign.DMUserId == _currentUserId)
+                                {
+                                    <button class="btn btn-outline-secondary" @onclick="@(() => ShowManageCampaignModal(campaign))">
+                                        <i class="fas fa-cog me-1"></i>
+                                        Manage
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+</AuthGuard>
+
+@code {
+    private List<CampaignDto>? _campaigns;
+    private bool _isLoading = true;
+    private string _errorMessage = string.Empty;
+    private Guid _currentUserId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCurrentUser();
+        await LoadCampaigns();
+    }
+
+    private async Task LoadCurrentUser()
+    {
+        try
+        {
+            var token = await JSRuntime.InvokeAsync<string>("localStorage.getItem", new object[] { "authToken" });
+            if (string.IsNullOrEmpty(token))
+            {
+                Navigation.NavigateTo("/login");
+                return;
+            }
+
+            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var userInfoJson = await JSRuntime.InvokeAsync<string>("localStorage.getItem", new object[] { "userInfo" });
+            if (!string.IsNullOrEmpty(userInfoJson))
+            {
+                var userInfo = JsonSerializer.Deserialize<UserInfo>(userInfoJson, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                });
+                _currentUserId = userInfo?.Id ?? Guid.Empty;
+            }
+        }
+        catch (Exception)
+        {
+            Navigation.NavigateTo("/login");
+        }
+    }
+
+    private async Task LoadCampaigns()
+    {
+        try
+        {
+            _isLoading = true;
+            _errorMessage = string.Empty;
+
+            var response = await Http.GetAsync("api/campaign");
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                _campaigns = JsonSerializer.Deserialize<List<CampaignDto>>(content, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                }) ?? new List<CampaignDto>();
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                Navigation.NavigateTo("/login");
+            }
+            else
+            {
+                _errorMessage = "Failed to load campaigns. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error loading campaigns: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ShowCreateCampaignModal()
+    {
+        // TODO: Implement create campaign modal
+        Navigation.NavigateTo("/campaigns/create");
+    }
+
+    private void ShowManageCampaignModal(CampaignDto campaign)
+    {
+        Navigation.NavigateTo($"/campaigns/{campaign.Id}/manage");
+    }
+
+    private void ViewCampaign(Guid campaignId)
+    {
+        Navigation.NavigateTo($"/campaigns/{campaignId}");
+    }
+
+    private string GetTimeSince(DateTime dateTime)
+    {
+        var timeSpan = DateTime.UtcNow - dateTime;
+        if (timeSpan.Days > 0) return $"{timeSpan.Days}d";
+        if (timeSpan.Hours > 0) return $"{timeSpan.Hours}h";
+        if (timeSpan.Minutes > 0) return $"{timeSpan.Minutes}m";
+        return "Now";
+    }
+
+    public class CampaignDto
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public Guid DMUserId { get; set; }
+        public Guid JoinToken { get; set; }
+        public bool IsActive { get; set; }
+        public DateTime? LastActivityAt { get; set; }
+        public int MemberCount { get; set; }
+        public int SessionCount { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
+    }
+
+    public class UserInfo
+    {
+        public Guid Id { get; set; }
+        public string Username { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Role { get; set; } = string.Empty;
+        public bool IsActive { get; set; }
+    }
+}
+
+<style>
+    .campaign-card {
+        border: none;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .campaign-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .stat-number {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #495057;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .campaign-stats {
+        border-top: 1px solid #dee2e6;
+        border-bottom: 1px solid #dee2e6;
+        padding: 1rem 0;
+    }
+</style>

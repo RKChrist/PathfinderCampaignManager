@@ -1,0 +1,288 @@
+@page "/character-builder"
+@page "/character-builder/{CharacterId:guid?}"
+@using PathfinderCampaignManager.Domain.Entities.Pathfinder
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Character Builder - Pathfinder Campaign Manager</PageTitle>
+
+<div class="character-builder">
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Left Panel - Build Steps -->
+            <div class="col-md-3 build-panel">
+                <div class="build-steps">
+                    <h4>Character Builder</h4>
+                    <div class="step-list">
+                        <div class="step @(ActiveStep == 0 ? "active" : "")" @onclick="() => SetActiveStep(0)">
+                            <div class="step-number">1</div>
+                            <div class="step-title">Ancestry</div>
+                        </div>
+                        <div class="step @(ActiveStep == 1 ? "active" : "")" @onclick="() => SetActiveStep(1)">
+                            <div class="step-number">2</div>
+                            <div class="step-title">Background</div>
+                        </div>
+                        <div class="step @(ActiveStep == 2 ? "active" : "")" @onclick="() => SetActiveStep(2)">
+                            <div class="step-number">3</div>
+                            <div class="step-title">Class</div>
+                        </div>
+                        <div class="step @(ActiveStep == 3 ? "active" : "")" @onclick="() => SetActiveStep(3)">
+                            <div class="step-number">4</div>
+                            <div class="step-title">Abilities</div>
+                        </div>
+                        <div class="step @(ActiveStep == 4 ? "active" : "")" @onclick="() => SetActiveStep(4)">
+                            <div class="step-number">5</div>
+                            <div class="step-title">Skills</div>
+                        </div>
+                        <div class="step @(ActiveStep == 5 ? "active" : "")" @onclick="() => SetActiveStep(5)">
+                            <div class="step-number">6</div>
+                            <div class="step-title">Feats</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Center Panel - Step Content -->
+            <div class="col-md-6 step-content">
+                @if (ActiveStep == 0)
+                {
+                    <div class="ancestry-selection">
+                        <h3>Choose Your Ancestry</h3>
+                        <div class="ancestry-grid">
+                            @foreach (var ancestry in Ancestries)
+                            {
+                                <div class="ancestry-card @(Character.Ancestry == ancestry.Name ? "selected" : "")" 
+                                     @onclick="() => SelectAncestry(ancestry)">
+                                    <h5>@ancestry.Name</h5>
+                                    <p>@ancestry.Description</p>
+                                    <small>HP: +@ancestry.HitPoints | Size: @ancestry.Size</small>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+                else if (ActiveStep == 1)
+                {
+                    <div class="background-selection">
+                        <h3>Choose Your Background</h3>
+                        <div class="background-grid">
+                            @foreach (var background in Backgrounds)
+                            {
+                                <div class="background-card @(Character.Background == background.Name ? "selected" : "")"
+                                     @onclick="() => SelectBackground(background)">
+                                    <h5>@background.Name</h5>
+                                    <p>@background.Description</p>
+                                    <small>Skills: @string.Join(", ", background.SkillProficiencies)</small>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+                else if (ActiveStep == 2)
+                {
+                    <div class="class-selection">
+                        <h3>Choose Your Class</h3>
+                        <div class="class-grid">
+                            @foreach (var pfClass in Classes)
+                            {
+                                <div class="class-card @(Character.ClassName == pfClass.Name ? "selected" : "")"
+                                     @onclick="() => SelectClass(pfClass)">
+                                    <h5>@pfClass.Name</h5>
+                                    <p>@pfClass.Description</p>
+                                    <div class="class-stats">
+                                        <small>
+                                            <strong>Key Ability:</strong> @pfClass.KeyAbility<br/>
+                                            <strong>Hit Points:</strong> @pfClass.HitPoints + Con modifier<br/>
+                                            <strong>Skills:</strong> @string.Join(", ", pfClass.ClassSkills.Take(3))@(pfClass.ClassSkills.Count > 3 ? "..." : "")
+                                        </small>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+                else if (ActiveStep == 3)
+                {
+                    <div class="ability-scores">
+                        <h3>Set Ability Scores</h3>
+                        <div class="ability-method">
+                            <h5>Ability Score Method</h5>
+                            <select @bind="AbilityMethod" class="form-select mb-3">
+                                <option value="array">Standard Array</option>
+                                <option value="manual">Manual Entry</option>
+                                <option value="pointbuy">Point Buy (25 points)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="ability-grid">
+                            <div class="ability-score">
+                                <label>Strength</label>
+                                <input type="number" @bind="Character.AbilityScores.Strength" min="1" max="20" class="form-control" />
+                                <small>Modifier: @Character.AbilityScores.GetModifier(Character.AbilityScores.Strength)</small>
+                            </div>
+                            <div class="ability-score">
+                                <label>Dexterity</label>
+                                <input type="number" @bind="Character.AbilityScores.Dexterity" min="1" max="20" class="form-control" />
+                                <small>Modifier: @Character.AbilityScores.GetModifier(Character.AbilityScores.Dexterity)</small>
+                            </div>
+                            <div class="ability-score">
+                                <label>Constitution</label>
+                                <input type="number" @bind="Character.AbilityScores.Constitution" min="1" max="20" class="form-control" />
+                                <small>Modifier: @Character.AbilityScores.GetModifier(Character.AbilityScores.Constitution)</small>
+                            </div>
+                            <div class="ability-score">
+                                <label>Intelligence</label>
+                                <input type="number" @bind="Character.AbilityScores.Intelligence" min="1" max="20" class="form-control" />
+                                <small>Modifier: @Character.AbilityScores.GetModifier(Character.AbilityScores.Intelligence)</small>
+                            </div>
+                            <div class="ability-score">
+                                <label>Wisdom</label>
+                                <input type="number" @bind="Character.AbilityScores.Wisdom" min="1" max="20" class="form-control" />
+                                <small>Modifier: @Character.AbilityScores.GetModifier(Character.AbilityScores.Wisdom)</small>
+                            </div>
+                            <div class="ability-score">
+                                <label>Charisma</label>
+                                <input type="number" @bind="Character.AbilityScores.Charisma" min="1" max="20" class="form-control" />
+                                <small>Modifier: @Character.AbilityScores.GetModifier(Character.AbilityScores.Charisma)</small>
+                            </div>
+                        </div>
+                    </div>
+                }
+                else if (ActiveStep == 4)
+                {
+                    <div class="skill-selection">
+                        <h3>Assign Skill Proficiencies</h3>
+                        <div class="skill-list">
+                            @foreach (var skill in AvailableSkills)
+                            {
+                                <div class="skill-row">
+                                    <div class="skill-name">@skill.Name</div>
+                                    <div class="skill-ability">@skill.Ability</div>
+                                    <div class="skill-proficiency">
+                                        <select @bind="GetCharacterSkill(skill.Name).Proficiency.Rank" class="form-select">
+                                            <option value="@ProficiencyRank.Untrained">Untrained</option>
+                                            <option value="@ProficiencyRank.Trained">Trained</option>
+                                            <option value="@ProficiencyRank.Expert">Expert</option>
+                                            <option value="@ProficiencyRank.Master">Master</option>
+                                            <option value="@ProficiencyRank.Legendary">Legendary</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+                else if (ActiveStep == 5)
+                {
+                    <div class="feat-selection">
+                        <h3>Choose Feats</h3>
+                        <div class="feat-categories">
+                            <div class="feat-category">
+                                <h5>General Feats</h5>
+                                <div class="feat-grid">
+                                    @foreach (var feat in AvailableFeats.Where(f => f.Type == "General"))
+                                    {
+                                        <div class="feat-card @(Character.SelectedFeats.Contains(feat.Name) ? "selected" : "")"
+                                             @onclick="() => ToggleFeat(feat)">
+                                            <h6>@feat.Name</h6>
+                                            <p>@feat.Description</p>
+                                            @if (feat.Prerequisites.Any())
+                                            {
+                                                <small><strong>Prerequisites:</strong> @string.Join(", ", feat.Prerequisites)</small>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                            
+                            @if (!string.IsNullOrEmpty(Character.ClassName))
+                            {
+                                <div class="feat-category">
+                                    <h5>@Character.ClassName Feats</h5>
+                                    <div class="feat-grid">
+                                        @foreach (var feat in AvailableFeats.Where(f => f.Type == "Class"))
+                                        {
+                                            <div class="feat-card @(Character.SelectedFeats.Contains(feat.Name) ? "selected" : "")"
+                                                 @onclick="() => ToggleFeat(feat)">
+                                                <h6>@feat.Name</h6>
+                                                <p>@feat.Description</p>
+                                                @if (feat.Prerequisites.Any())
+                                                {
+                                                    <small><strong>Prerequisites:</strong> @string.Join(", ", feat.Prerequisites)</small>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+                
+                <div class="step-navigation">
+                    @if (ActiveStep > 0)
+                    {
+                        <button class="btn btn-secondary" @onclick="PreviousStep">Previous</button>
+                    }
+                    @if (ActiveStep < 5)
+                    {
+                        <button class="btn btn-primary" @onclick="NextStep">Next</button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-success" @onclick="SaveCharacter">Save Character</button>
+                    }
+                </div>
+            </div>
+
+            <!-- Right Panel - Character Summary -->
+            <div class="col-md-3 character-summary">
+                <div class="summary-card">
+                    <h4>Character Summary</h4>
+                    
+                    <div class="character-name">
+                        <label>Character Name</label>
+                        <input type="text" @bind="Character.Name" class="form-control" placeholder="Enter name" />
+                    </div>
+                    
+                    <div class="summary-section">
+                        <h6>Build</h6>
+                        <p><strong>Ancestry:</strong> @(string.IsNullOrEmpty(Character.Ancestry) ? "Not selected" : Character.Ancestry)</p>
+                        <p><strong>Background:</strong> @(string.IsNullOrEmpty(Character.Background) ? "Not selected" : Character.Background)</p>
+                        <p><strong>Class:</strong> @(string.IsNullOrEmpty(Character.ClassName) ? "Not selected" : Character.ClassName)</p>
+                        <p><strong>Level:</strong> @Character.Level</p>
+                    </div>
+                    
+                    <div class="summary-section">
+                        <h6>Combat Stats</h6>
+                        <p><strong>AC:</strong> @CalculateAC()</p>
+                        <p><strong>HP:</strong> @CalculateHitPoints()</p>
+                        <p><strong>Perception:</strong> @CalculatePerception()</p>
+                    </div>
+                    
+                    <div class="summary-section">
+                        <h6>Saves</h6>
+                        <p><strong>Fortitude:</strong> @CalculateFortitude()</p>
+                        <p><strong>Reflex:</strong> @CalculateReflex()</p>
+                        <p><strong>Will:</strong> @CalculateWill()</p>
+                    </div>
+                    
+                    <div class="summary-section">
+                        <h6>Feats</h6>
+                        @if (!Character.SelectedFeats.Any())
+                        {
+                            <p><em>No feats selected</em></p>
+                        }
+                        else
+                        {
+                            @foreach (var featName in Character.SelectedFeats)
+                            {
+                                <p><small>@featName</small></p>
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

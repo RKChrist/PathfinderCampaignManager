@@ -1,0 +1,122 @@
+@using PathfinderCampaignManager.Application.CharacterCreation.Models
+@using PathfinderCampaignManager.Domain.Enums
+
+<div class="pf2e-class-component fighter-class">
+    <div class="class-header">
+        <div class="class-icon">
+            <i class="fas fa-sword"></i>
+        </div>
+        <div class="class-info">
+            <h3 class="class-name">Fighter</h3>
+            <span class="class-role">Striker/Defender</span>
+        </div>
+        <div class="class-rarity common">Common</div>
+    </div>
+
+    <div class="class-stats-grid">
+        <div class="stat-block">
+            <span class="stat-label">Hit Points</span>
+            <span class="stat-value">10 + Con modifier</span>
+        </div>
+        <div class="stat-block">
+            <span class="stat-label">Key Ability</span>
+            <span class="stat-value">Str or Dex</span>
+        </div>
+        <div class="stat-block">
+            <span class="stat-label">Initial Proficiencies</span>
+            <span class="stat-value">Expert in martial weapons</span>
+        </div>
+        <div class="stat-block">
+            <span class="stat-label">Skills</span>
+            <span class="stat-value">3 + Int modifier</span>
+        </div>
+    </div>
+
+    <div class="class-description">
+        <p>
+            Fighting for honor, greed, loyalty, or simply the thrill of battle, you are an undisputed master of weaponry and combat techniques. 
+            You combine your actions through clever combinations of opening moves, finishing strikes, and counterattacks whenever your foes are unwise enough to drop their guard.
+        </p>
+    </div>
+
+    @if (ShowDetails)
+    {
+        <div class="class-details-expanded">
+            <div class="class-abilities">
+                <h4>Class Features</h4>
+                <ul>
+                    <li><strong>Ancestry and Background:</strong> Choose your ancestry and background</li>
+                    <li><strong>Initial Proficiencies:</strong> Expert in martial weapons, trained in armor</li>
+                    <li><strong>Fighter Feat:</strong> Choose a 1st-level fighter feat</li>
+                    <li><strong>Shield Block:</strong> You gain the Shield Block general feat</li>
+                </ul>
+            </div>
+
+            <div class="progression-preview">
+                <h4>Level Progression Preview</h4>
+                <div class="progression-levels">
+                    <div class="level-marker">
+                        <span class="level">1st</span>
+                        <span class="feature">Fighter feat, Shield Block</span>
+                    </div>
+                    <div class="level-marker">
+                        <span class="level">2nd</span>
+                        <span class="feature">Fighter feat, skill feat</span>
+                    </div>
+                    <div class="level-marker">
+                        <span class="level">3rd</span>
+                        <span class="feature">Bravery, general feat, skill increase</span>
+                    </div>
+                    <div class="level-marker">
+                        <span class="level">5th</span>
+                        <span class="feature">Fighter weapon mastery</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sample-builds">
+                <h4>Sample Builds</h4>
+                <div class="build-options">
+                    <div class="build-option">
+                        <h5>Weapon Master</h5>
+                        <p>Focus on weapon expertise and combat techniques</p>
+                        <div class="build-stats">
+                            <span class="build-stat">Str 18, Dex 14, Con 16</span>
+                        </div>
+                    </div>
+                    <div class="build-option">
+                        <h5>Archer</h5>
+                        <p>Ranged combat specialist with bow mastery</p>
+                        <div class="build-stats">
+                            <span class="build-stat">Str 14, Dex 18, Con 16</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="class-actions">
+        <button class="btn btn-primary" @onclick="SelectClass" disabled="@IsSelected">
+            @if (IsSelected)
+            {
+                <i class="fas fa-check"></i> <text>Selected</text>
+            }
+            else
+            {
+                <i class="fas fa-plus"></i> <text>Select Fighter</text>
+            }
+        </button>
+        <button class="btn btn-secondary" @onclick="ToggleDetails">
+            @if (ShowDetails)
+            {
+                <i class="fas fa-chevron-up"></i> <text>Less Details</text>
+            }
+            else
+            {
+                <i class="fas fa-chevron-down"></i> <text>More Details</text>
+            }
+        </button>
+    </div>
+</div>
+

@@ -1,0 +1,308 @@
+﻿@using PathfinderCampaignManager.Presentation.Client.Services
+@using PathfinderCampaignManager.Presentation.Client.Store.Auth
+@using Fluxor
+@inject IAuthenticationService AuthService
+@inject IState<AuthState> AuthState
+@implements IDisposable
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/">
+            <i class="fas fa-dragon me-2"></i>
+            Pathfinder Manager
+        </a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
+    <nav class="nav flex-column">
+        <!-- Public/Unauthenticated sections -->
+        <div class="nav-section">
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="rules">
+                    <i class="fas fa-book me-2"></i> Rules Reference
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="hover-cards-demo">
+                    <i class="fas fa-magic me-2"></i> Hover Cards Demo
+                </NavLink>
+            </div>
+        </div>
+
+        @if (_isAuthenticated)
+        {
+            <!-- Character Management - Requires Authentication -->
+            <div class="nav-section">
+                <div class="nav-section-header">
+                    <small class="text-muted px-3">Character Management</small>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="characters/create">
+                        <i class="fas fa-user-plus me-2"></i> Create Character
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="character-builder-fluxor">
+                        <i class="fas fa-hammer me-2"></i> Character Builder
+                    </NavLink>
+                </div>
+            </div>
+
+            <!-- Campaign Management - Requires Authentication -->
+            <div class="nav-section">
+                <div class="nav-section-header">
+                    <small class="text-muted px-3">Campaign Management</small>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="campaigns">
+                        <i class="fas fa-home me-2"></i> My Campaigns
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="join">
+                        <i class="fas fa-users me-2"></i> Join Campaign
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="combat-signalr">
+                        <i class="fas fa-sword me-2"></i> Combat Tracker
+                    </NavLink>
+                </div>
+            </div>
+
+            <!-- DM Tools - Requires Authentication -->
+            <div class="nav-section">
+                <div class="nav-section-header">
+                    <small class="text-muted px-3">DM Tools</small>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="npc-monsters">
+                        <i class="fas fa-dragon me-2"></i> NPC/Monsters
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="npc-monsters/create">
+                        <i class="fas fa-plus-circle me-2"></i> Create NPC/Monster
+                    </NavLink>
+                </div>
+            </div>
+
+            <!-- Development/Testing - Show only in development or to admins -->
+            @if (_currentUser?.Role == "Admin" || _isDevelopment)
+            {
+                <div class="nav-section">
+                    <div class="nav-section-header">
+                        <small class="text-muted px-3">Development</small>
+                    </div>
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="validation-demo">
+                            <i class="fas fa-check-circle me-2"></i> Validation Demo
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="counter">
+                            <i class="fas fa-plus-square me-2"></i> Counter
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="weather">
+                            <i class="fas fa-cloud me-2"></i> Weather
+                        </NavLink>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <!-- Authentication Links for Unauthenticated Users -->
+            <div class="nav-section">
+                <div class="nav-section-header">
+                    <small class="text-muted px-3">Account</small>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link auth-link" href="login">
+                        <i class="fas fa-sign-in-alt me-2"></i> Sign In
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link auth-link" href="register">
+                        <i class="fas fa-user-plus me-2"></i> Register
+                    </NavLink>
+                </div>
+            </div>
+
+            <!-- Info section for unauthenticated users -->
+            <div class="nav-section">
+                <div class="nav-item px-3">
+                    <div class="auth-info-card">
+                        <div class="auth-info-header">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Get Started</strong>
+                        </div>
+                        <p class="auth-info-text">
+                            Sign in to create characters, join campaigns, and access all DM tools.
+                        </p>
+                        <div class="auth-info-actions">
+                            <a href="/register" class="btn btn-primary btn-sm">
+                                Create Account
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </nav>
+</div>
+
+<style>
+    .navbar-brand {
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    .nav-section {
+        margin-bottom: 1.5rem;
+    }
+
+    .nav-section-header {
+        margin-bottom: 0.5rem;
+        margin-top: 1rem;
+        padding: 0.25rem 0;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .nav-section-header:first-child {
+        margin-top: 0;
+    }
+
+    .nav-section-header small {
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-size: 0.7rem;
+        opacity: 0.8;
+    }
+
+    .nav-link {
+        display: flex;
+        align-items: center;
+        padding: 0.65rem 1rem;
+        color: rgba(255,255,255,0.8);
+        border-radius: 0.375rem;
+        margin: 0.125rem 0;
+        transition: all 0.2s ease;
+    }
+
+    .nav-link:hover {
+        background-color: rgba(255,255,255,0.1);
+        color: white;
+    }
+
+    .nav-link.active {
+        background-color: rgba(255,255,255,0.15);
+        color: white;
+        font-weight: 500;
+    }
+
+    .nav-link i {
+        width: 18px;
+        font-size: 0.9rem;
+        opacity: 0.8;
+    }
+
+    .auth-link {
+        background-color: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .auth-link:hover {
+        background-color: rgba(255,255,255,0.15);
+        border-color: rgba(255,255,255,0.2);
+    }
+
+    .auth-info-card {
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin: 0.5rem 0;
+    }
+
+    .auth-info-header {
+        color: white;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        font-size: 0.875rem;
+    }
+
+    .auth-info-text {
+        color: rgba(255,255,255,0.8);
+        font-size: 0.8rem;
+        line-height: 1.4;
+        margin-bottom: 0.75rem;
+    }
+
+    .auth-info-actions .btn-primary {
+        font-size: 0.75rem;
+        padding: 0.375rem 0.75rem;
+        background: var(--bs-primary, #0d6efd);
+        border-color: var(--bs-primary, #0d6efd);
+    }
+</style>
+
+@code {
+    private bool collapseNavMenu = true;
+    private bool _isAuthenticated = false;
+    private UserInfo? _currentUser = null;
+    private bool _isDevelopment = false;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthState.StateChanged += OnAuthStateChanged;
+        await LoadAuthenticationState();
+        
+        // Determine if we're in development environment
+        _isDevelopment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
+    }
+
+    private async Task LoadAuthenticationState()
+    {
+        try
+        {
+            _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            if (_isAuthenticated)
+            {
+                _currentUser = await AuthService.GetCurrentUserAsync();
+            }
+        }
+        catch (Exception)
+        {
+            _isAuthenticated = false;
+            _currentUser = null;
+        }
+        
+        StateHasChanged();
+    }
+
+    private async void OnAuthStateChanged(object sender, EventArgs e)
+    {
+        await LoadAuthenticationState();
+    }
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+
+    public void Dispose()
+    {
+        AuthState.StateChanged -= OnAuthStateChanged;
+    }
+}

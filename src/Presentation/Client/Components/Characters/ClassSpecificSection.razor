@@ -1,0 +1,384 @@
+@using PathfinderCampaignManager.Domain.Entities.Pathfinder
+@using PathfinderCampaignManager.Domain.Entities.Auth
+@using PathfinderCampaignManager.Presentation.Client.Components.Auth
+
+<div class="class-specific-section">
+    @if (!string.IsNullOrEmpty(ClassName))
+    {
+        @switch (ClassName.ToLower())
+        {
+            case "wizard":
+                <WizardSpecificContent />
+                break;
+            case "barbarian":
+                <BarbarianSpecificContent />
+                break;
+            case "alchemist":
+                <AlchemistSpecificContent />
+                break;
+            case "cleric":
+                <ClericSpecificContent />
+                break;
+            default:
+                <GenericClassContent ClassName="@ClassName" />
+                break;
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public string ClassName { get; set; } = string.Empty;
+    [Parameter] public PfCharacter? Character { get; set; }
+}
+
+<!-- Wizard-specific content -->
+<div id="wizard-content" style="display: none;">
+    <div class="wizard-features">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5><i class="fas fa-hat-wizard"></i> Wizard Features</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="feature-group">
+                            <label class="form-label"><strong>Arcane School:</strong></label>
+                            <select class="form-select">
+                                <option value="">Universalist</option>
+                                <option value="abjuration">Abjuration</option>
+                                <option value="conjuration">Conjuration</option>
+                                <option value="divination">Divination</option>
+                                <option value="enchantment">Enchantment</option>
+                                <option value="evocation">Evocation</option>
+                                <option value="illusion">Illusion</option>
+                                <option value="necromancy">Necromancy</option>
+                                <option value="transmutation">Transmutation</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="feature-group">
+                            <label class="form-label"><strong>Arcane Bond:</strong></label>
+                            <select class="form-select">
+                                <option value="familiar">Familiar</option>
+                                <option value="bonded_item">Bonded Item</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Spellbook Management -->
+                <div class="spellbook-section mt-3">
+                    <h6>Spellbook</h6>
+                    <AuthorizedView RequiredRole="UserRole.Player">
+                        <div class="alert alert-info">
+                            <small><i class="fas fa-info-circle"></i> Track your known spells and daily preparations here</small>
+                        </div>
+                    </AuthorizedView>
+
+                    <AuthorizedView RequiredRole="UserRole.DM">
+                        <div class="alert alert-warning">
+                            <small><i class="fas fa-eye"></i> <strong>DM Note:</strong> Wizards start with 4 + Int modifier cantrips and 6 + Int modifier 1st level spells</small>
+                        </div>
+                    </AuthorizedView>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Component definitions -->
+@code {
+    private RenderFragment WizardSpecificContent => __builder =>
+    {
+        <div class="wizard-features">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5><i class="fas fa-hat-wizard"></i> Wizard Features</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="feature-group">
+                                <label class="form-label"><strong>Arcane School:</strong></label>
+                                <select class="form-select">
+                                    <option value="">Universalist</option>
+                                    <option value="abjuration">Abjuration</option>
+                                    <option value="conjuration">Conjuration</option>
+                                    <option value="divination">Divination</option>
+                                    <option value="enchantment">Enchantment</option>
+                                    <option value="evocation">Evocation</option>
+                                    <option value="illusion">Illusion</option>
+                                    <option value="necromancy">Necromancy</option>
+                                    <option value="transmutation">Transmutation</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="feature-group">
+                                <label class="form-label"><strong>Arcane Bond:</strong></label>
+                                <select class="form-select">
+                                    <option value="familiar">Familiar</option>
+                                    <option value="bonded_item">Bonded Item</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Spell Slots Tracker -->
+                    <div class="spell-slots-section mt-3">
+                        <h6>Spell Slots</h6>
+                        <div class="spell-level-group">
+                            @for (int level = 1; level <= 9; level++)
+                            {
+                                <div class="spell-level mb-2">
+                                    <span class="spell-level-label">Level @level:</span>
+                                    <div class="spell-slots">
+                                        @for (int i = 0; i < GetSpellSlotsForLevel(level); i++)
+                                        {
+                                            <input type="checkbox" class="spell-slot-checkbox" />
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    };
+
+    private RenderFragment BarbarianSpecificContent => __builder =>
+    {
+        <div class="barbarian-features">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h5><i class="fas fa-axe-battle"></i> Barbarian Features</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="feature-group">
+                                <label class="form-label"><strong>Instinct:</strong></label>
+                                <select class="form-select">
+                                    <option value="animal">Animal Instinct</option>
+                                    <option value="dragon">Dragon Instinct</option>
+                                    <option value="giant">Giant Instinct</option>
+                                    <option value="spirit">Spirit Instinct</option>
+                                    <option value="superstition">Superstition Instinct</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="feature-group">
+                                <label class="form-label"><strong>Rage Uses:</strong></label>
+                                <div class="rage-tracker">
+                                    @for (int i = 0; i < GetRageUses(); i++)
+                                    {
+                                        <input type="checkbox" class="rage-use-checkbox" />
+                                    }
+                                </div>
+                                <small class="text-muted">@GetRageUses() uses per day</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rage Benefits -->
+                    <div class="rage-benefits mt-3">
+                        <h6>Rage Benefits</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-plus text-success"></i> +@GetRageDamageBonus() damage to melee attacks</li>
+                            <li><i class="fas fa-heart text-danger"></i> +@GetRageTempHP() temporary Hit Points</li>
+                            <li><i class="fas fa-ban text-warning"></i> Cannot use concentrate actions</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    };
+
+    private RenderFragment AlchemistSpecificContent => __builder =>
+    {
+        <div class="alchemist-features">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5><i class="fas fa-flask"></i> Alchemist Features</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="feature-group">
+                                <label class="form-label"><strong>Research Field:</strong></label>
+                                <select class="form-select">
+                                    <option value="bomber">Bomber</option>
+                                    <option value="chirurgeon">Chirurgeon</option>
+                                    <option value="mutagenist">Mutagenist</option>
+                                    <option value="toxicologist">Toxicologist</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="feature-group">
+                                <label class="form-label"><strong>Daily Reagents:</strong></label>
+                                <div class="reagent-tracker">
+                                    @for (int i = 0; i < GetDailyReagents(); i++)
+                                    {
+                                        <input type="checkbox" class="reagent-checkbox" />
+                                    }
+                                </div>
+                                <small class="text-muted">@GetDailyReagents() reagents per day</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Formula Book -->
+                    <div class="formula-book mt-3">
+                        <h6>Formula Book</h6>
+                        <AuthorizedView RequiredRole="UserRole.Player">
+                            <div class="alert alert-info">
+                                <small><i class="fas fa-book"></i> Track your known formulas here</small>
+                            </div>
+                        </AuthorizedView>
+                    </div>
+                </div>
+            </div>
+        </div>
+    };
+
+    private RenderFragment ClericSpecificContent => __builder =>
+    {
+        <div class="cleric-features">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h5><i class="fas fa-cross"></i> Cleric Features</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="feature-group">
+                                <label class="form-label"><strong>Deity:</strong></label>
+                                <input type="text" class="form-control" placeholder="Enter deity name" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="feature-group">
+                                <label class="form-label"><strong>Divine Font:</strong></label>
+                                <select class="form-select">
+                                    <option value="heal">Heal</option>
+                                    <option value="harm">Harm</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Domain Powers -->
+                    <div class="domains mt-3">
+                        <h6>Domains</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label class="form-label">Domain 1:</label>
+                                <input type="text" class="form-control" placeholder="First domain" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Domain 2:</label>
+                                <input type="text" class="form-control" placeholder="Second domain" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    };
+
+    private RenderFragment<string> GenericClassContent => className => __builder =>
+    {
+        <div class="generic-class-features">
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <h5><i class="fas fa-user"></i> @className Features</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>@className-specific features will be available soon!</strong>
+                        <p class="mb-0 mt-2">This class page is currently under development. Basic character information can be tracked using the standard character sheet sections.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    };
+
+    // Helper methods for calculations
+    private int GetSpellSlotsForLevel(int level)
+    {
+        // Simplified calculation - in real implementation would use character level
+        if (level == 1) return 2;
+        if (level == 2) return 1;
+        return 0;
+    }
+
+    private int GetRageUses()
+    {
+        // Simplified - would use 1 + Con modifier in real implementation
+        return 3;
+    }
+
+    private int GetRageDamageBonus()
+    {
+        // Simplified - varies by level
+        return 2;
+    }
+
+    private int GetRageTempHP()
+    {
+        // Simplified - would use Con modifier + half level
+        return 5;
+    }
+
+    private int GetDailyReagents()
+    {
+        // Simplified - would use level + Int modifier
+        return 4;
+    }
+}
+
+<style>
+    .class-specific-section {
+        margin-top: 1rem;
+    }
+
+    .feature-group {
+        margin-bottom: 1rem;
+    }
+
+    .spell-level {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .spell-level-label {
+        min-width: 80px;
+        font-weight: 500;
+    }
+
+    .spell-slots {
+        display: flex;
+        gap: 5px;
+    }
+
+    .spell-slot-checkbox,
+    .rage-use-checkbox,
+    .reagent-checkbox {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+    }
+
+    .rage-tracker,
+    .reagent-tracker {
+        display: flex;
+        gap: 5px;
+        margin-bottom: 5px;
+    }
+</style>

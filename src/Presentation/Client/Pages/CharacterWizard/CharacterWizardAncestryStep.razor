@@ -1,0 +1,206 @@
+@using PathfinderCampaignManager.Domain.Entities.Pathfinder
+
+<div class="character-wizard-ancestry-step">
+    <h3>Choose Your Ancestry</h3>
+    <p class="step-description">Your ancestry determines your character's heritage and provides ability boosts, heritage options, and ancestral feats.</p>
+    
+    @if (IsLoading)
+    {
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i>
+            Loading ancestries...
+        </div>
+    }
+    else if (AvailableOptions.Any())
+    {
+        <div class="ancestry-grid">
+            @foreach (var ancestry in AvailableOptions.Cast<PfAncestry>())
+            {
+                <div class="ancestry-card @(IsSelected(ancestry) ? "selected" : "")"
+                     @onclick="() => SelectAncestry(ancestry)">
+                    <div class="ancestry-icon">
+                        <i class="@GetAncestryIcon(ancestry.Name)"></i>
+                    </div>
+                    <div class="ancestry-info">
+                        <h4>@ancestry.Name</h4>
+                        <p class="ancestry-summary">@GetAncestrySummary(ancestry)</p>
+                        <div class="ancestry-details">
+                            <div class="detail-row">
+                                <span class="detail-label">Hit Points:</span>
+                                <span class="detail-value">@ancestry.HitPoints</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Size:</span>
+                                <span class="detail-value">@ancestry.Size</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Speed:</span>
+                                <span class="detail-value">@ancestry.Speed feet</span>
+                            </div>
+                        </div>
+                        @if (ancestry.Traits?.Any() == true)
+                        {
+                            <div class="ancestry-traits">
+                                @foreach (var trait in ancestry.Traits.Take(3))
+                                {
+                                    <span class="trait-tag">@trait</span>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+        
+        @if (Value.Ancestry != null)
+        {
+            <div class="ancestry-details-panel">
+                <h4>@Value.Ancestry Details</h4>
+                <div class="selected-ancestry-info">
+                    <!-- Heritage selection will go here -->
+                    <p>Heritage selection coming soon...</p>
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="no-data">
+            <i class="fas fa-exclamation-triangle"></i>
+            <p>No ancestries available. Please check your data configuration.</p>
+        </div>
+    }
+</div>
+
+<style>
+.character-wizard-ancestry-step {
+    padding: 1rem 0;
+}
+
+.step-description {
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+    line-height: 1.5;
+}
+
+.loading-spinner {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-secondary);
+}
+
+.ancestry-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.ancestry-card {
+    border: 2px solid var(--border-color);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: white;
+}
+
+.ancestry-card:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.ancestry-card.selected {
+    border-color: var(--primary-color);
+    background: var(--primary-color-10);
+    box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.2);
+}
+
+.ancestry-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--primary-color-20);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+    color: var(--primary-color);
+}
+
+.ancestry-card.selected .ancestry-icon {
+    background: var(--primary-color);
+    color: white;
+}
+
+.ancestry-info h4 {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-primary);
+    font-size: 1.125rem;
+}
+
+.ancestry-summary {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    line-height: 1.4;
+    margin-bottom: 1rem;
+}
+
+.ancestry-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-bottom: 1rem;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.875rem;
+}
+
+.detail-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.detail-value {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.ancestry-traits {
+    display: flex;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+}
+
+.trait-tag {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    background: var(--surface-background);
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.ancestry-details-panel {
+    border-top: 1px solid var(--border-color);
+    padding-top: 2rem;
+    margin-top: 2rem;
+}
+
+.no-data {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-secondary);
+}
+
+.no-data i {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    color: var(--warning-color);
+}
+</style>

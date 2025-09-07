@@ -1,0 +1,187 @@
+@using PathfinderCampaignManager.Application.CharacterCreation.Models
+@using PathfinderCampaignManager.Presentation.Client.Components.CharacterCreation.Steps
+
+<div class="character-creation-walkthrough">
+    @if (_isLoading)
+    {
+        <div class="loading">
+            <div class="spinner"></div>
+            <span>Initializing character creation...</span>
+        </div>
+    }
+    else if (_session != null)
+    {
+        <!-- Walkthrough Header -->
+        <div class="walkthrough-header">
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: @(ProgressPercentage)%"></div>
+            </div>
+            
+            <div class="step-info">
+                <h1 class="step-title">@CurrentStepConfig.Title</h1>
+                <span class="step-counter">Step @CurrentStepIndex of @StepCount</span>
+            </div>
+            
+            @if (!string.IsNullOrEmpty(CurrentStepConfig.Description))
+            {
+                <p class="step-description">@CurrentStepConfig.Description</p>
+            }
+        </div>
+
+        <!-- Error Display -->
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle"></i>
+                @_errorMessage
+            </div>
+        }
+
+        <!-- Step Content -->
+        <div class="walkthrough-content">
+            <div class="walkthrough-step">
+                @{
+                    var stepComponent = CurrentStep switch
+                    {
+                        CharacterCreationStep.ClassSelection => typeof(ClassSelectionStep),
+                        CharacterCreationStep.AncestrySelection => typeof(AncestrySelectionStep),
+                        CharacterCreationStep.BackgroundSelection => typeof(BackgroundSelectionStep),
+                        CharacterCreationStep.AbilityScores => typeof(AbilityScoreStep),
+                        CharacterCreationStep.SkillSelection => typeof(SkillSelectionStep),
+                        CharacterCreationStep.FeatSelection => typeof(FeatSelectionStep),
+                        CharacterCreationStep.EquipmentSelection => typeof(EquipmentSelectionStep),
+                        CharacterCreationStep.SpellSelection => typeof(SpellSelectionStep),
+                        CharacterCreationStep.Finalization => typeof(CharacterFinalizationStep),
+                        CharacterCreationStep.Review => typeof(CharacterReviewStep),
+                        _ => typeof(ClassSelectionStep)
+                    };
+                }
+
+                @switch (CurrentStep)
+                {
+                    case CharacterCreationStep.ClassSelection:
+                        <ClassSelectionStep Character="CharacterData" 
+                                          OnSelectionChanged="OnStepDataChanged" />
+                        break;
+                    
+                    case CharacterCreationStep.AncestrySelection:
+                        <AncestrySelectionStep Character="CharacterData" 
+                                             OnSelectionChanged="OnStepDataChanged" />
+                        break;
+                    
+                    case CharacterCreationStep.BackgroundSelection:
+                        <BackgroundSelectionStep Character="CharacterData" 
+                                               OnSelectionChanged="OnStepDataChanged" />
+                        break;
+                    
+                    case CharacterCreationStep.AbilityScores:
+                        <AbilityScoreStep Character="CharacterData" 
+                                        OnValuesChanged="OnStepDataChanged" />
+                        break;
+                    
+                    case CharacterCreationStep.SkillSelection:
+                        <SkillSelectionStep Character="CharacterData" 
+                                          OnSelectionChanged="OnStepDataChanged" />
+                        break;
+                    
+                    case CharacterCreationStep.FeatSelection:
+                        <FeatSelectionStep Character="CharacterData" 
+                                         OnSelectionChanged="OnStepDataChanged" />
+                        break;
+                    
+                    case CharacterCreationStep.EquipmentSelection:
+                        <EquipmentSelectionStep Character="CharacterData" 
+                                              OnSelectionChanged="OnStepDataChanged" />
+                        break;
+                    
+                    case CharacterCreationStep.SpellSelection:
+                        @if (IsSpellcaster())
+                        {
+                            <SpellSelectionStep Character="CharacterData" 
+                                              OnSelectionChanged="OnStepDataChanged" />
+                        }
+                        else
+                        {
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i>
+                                Your class doesn't use spells. Click Next to continue.
+                            </div>
+                        }
+                        break;
+                    
+                    case CharacterCreationStep.Finalization:
+                        <CharacterFinalizationStep Character="CharacterData" 
+                                                 OnDetailsChanged="OnStepDataChanged" />
+                        break;
+                    
+                    case CharacterCreationStep.Review:
+                        <CharacterReviewStep Character="CharacterData" 
+                                           Session="_session" />
+                        break;
+                }
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="walkthrough-navigation">
+            <div class="nav-buttons">
+                <button class="btn btn-secondary btn-previous" 
+                        @onclick="GoPrevious"
+                        disabled="@(!CanGoBack || _isNavigating)">
+                    <i class="fas fa-arrow-left"></i>
+                    Previous
+                </button>
+
+                <div class="nav-actions">
+                    <button class="btn btn-secondary" 
+                            @onclick="CancelCreation"
+                            disabled="@_isNavigating">
+                        <i class="fas fa-times"></i>
+                        Cancel
+                    </button>
+                    
+                    @if (IsLastStep)
+                    {
+                        <button class="btn btn-primary btn-next" 
+                                @onclick="CompleteCharacterCreation"
+                                disabled="@(!CanGoNext || _isNavigating)">
+                            @if (_isNavigating)
+                            {
+                                <i class="fas fa-spinner fa-spin"></i>
+                            }
+                            else
+                            {
+                                <i class="fas fa-check"></i>
+                            }
+                            Create Character
+                        </button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-primary btn-next" 
+                                @onclick="GoNext"
+                                disabled="@(!CanGoNext || _isNavigating)">
+                            Next
+                            <i class="fas fa-arrow-right"></i>
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle"></i>
+            Failed to initialize character creation. Please try again.
+            <button class="btn btn-secondary mt-md" @onclick="LoadSession">
+                <i class="fas fa-refresh"></i>
+                Retry
+            </button>
+        </div>
+    }
+</div>
+
+<style>
+    /* CSS imports disabled for compilation */
+</style>

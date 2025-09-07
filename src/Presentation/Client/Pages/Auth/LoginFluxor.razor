@@ -1,0 +1,237 @@
+@page "/login-fluxor"
+@using Fluxor
+@using PathfinderCampaignManager.Presentation.Client.Store.Auth
+@using System.ComponentModel.DataAnnotations
+@inherits Fluxor.Blazor.Web.Components.FluxorComponent
+@inject IState<AuthState> AuthState
+@inject IDispatcher Dispatcher
+@inject NavigationManager Navigation
+
+<PageTitle>Login - Pathfinder Campaign Manager</PageTitle>
+
+<div class="login-container">
+    <div class="login-card">
+        <div class="text-center mb-4">
+            <h1 class="h3 mb-3 fw-normal">Welcome Back</h1>
+            <p class="text-muted">Sign in to your Pathfinder Campaign Manager account</p>
+        </div>
+
+        @if (!string.IsNullOrEmpty(AuthState.Value.ErrorMessage))
+        {
+            <div class="alert alert-danger" role="alert">
+                @AuthState.Value.ErrorMessage
+            </div>
+        }
+
+        @if (AuthState.Value.IsLoading)
+        {
+            <div class="text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2 text-muted">Signing you in...</p>
+            </div>
+        }
+        else if (_showEmailLogin)
+        {
+            <EditForm Model="@_loginModel" OnValidSubmit="LoginWithEmail">
+                <DataAnnotationsValidator />
+                
+                <div class="mb-3">
+                    <label for="emailOrUsername" class="form-label">Email or Username</label>
+                    <InputText id="emailOrUsername" class="form-control" @bind-Value="_loginModel.EmailOrUsername" 
+                               placeholder="Enter your email or username" />
+                    <ValidationMessage For="@(() => _loginModel.EmailOrUsername)" class="text-danger" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <InputText type="password" id="password" class="form-control" @bind-Value="_loginModel.Password" 
+                               placeholder="Enter your password" />
+                    <ValidationMessage For="@(() => _loginModel.Password)" class="text-danger" />
+                </div>
+
+                <div class="d-grid mb-3">
+                    <button type="submit" class="btn btn-primary btn-lg" disabled="@AuthState.Value.IsLoading">
+                        @if (AuthState.Value.IsLoading)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        }
+                        Sign In
+                    </button>
+                </div>
+            </EditForm>
+
+            <div class="text-center">
+                <div class="divider my-4">
+                    <span class="divider-text">Or continue with</span>
+                </div>
+                
+                <div class="d-grid mb-3">
+                    <button class="btn btn-discord btn-lg" @onclick="LoginWithDiscord" disabled="@AuthState.Value.IsLoading">
+                        <i class="fab fa-discord me-2"></i>
+                        Continue with Discord
+                    </button>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="d-grid mb-3">
+                <button class="btn btn-primary btn-lg" @onclick="ShowEmailLogin">
+                    <i class="fas fa-envelope me-2"></i>
+                    Sign in with Email
+                </button>
+            </div>
+            
+            <div class="d-grid mb-3">
+                <button class="btn btn-discord btn-lg" @onclick="LoginWithDiscord" disabled="@AuthState.Value.IsLoading">
+                    <i class="fab fa-discord me-2"></i>
+                    Continue with Discord
+                </button>
+            </div>
+        }
+
+        <div class="text-center mt-4">
+            @if (_showEmailLogin)
+            {
+                <p class="text-muted mb-2">
+                    <a href="javascript:void(0)" @onclick="HideEmailLogin" class="text-decoration-none">← Back to login options</a>
+                </p>
+            }
+            <p class="text-muted mb-0">
+                Don't have an account? 
+                <a href="/register-fluxor" class="text-decoration-none">Create one here</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+<style>
+    .login-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem;
+    }
+
+    .login-card {
+        background: white;
+        padding: 3rem;
+        border-radius: 1rem;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 400px;
+    }
+
+    .btn-primary {
+        background: #5865f2;
+        border-color: #5865f2;
+        padding: 0.75rem 1.5rem;
+    }
+
+    .btn-primary:hover {
+        background: #4752c4;
+        border-color: #4752c4;
+    }
+
+    .btn-discord {
+        background: #5865f2;
+        border-color: #5865f2;
+        color: white;
+        padding: 0.75rem 1.5rem;
+    }
+
+    .btn-discord:hover {
+        background: #4752c4;
+        border-color: #4752c4;
+        color: white;
+    }
+
+    .divider {
+        position: relative;
+        text-align: center;
+    }
+
+    .divider::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: #dee2e6;
+    }
+
+    .divider-text {
+        background: white;
+        padding: 0 1rem;
+        color: #6c757d;
+        font-size: 0.875rem;
+    }
+
+    .fab, .fas {
+        font-family: "Font Awesome 6 Brands", "Font Awesome 6 Free";
+    }
+</style>
+
+@code {
+    private bool _showEmailLogin = false;
+    private LoginModel _loginModel = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        // Check if we're returning from Discord OAuth
+        var uri = new Uri(Navigation.Uri);
+        if (uri.Query.Contains("code="))
+        {
+            var queryParams = uri.Query.TrimStart('?').Split('&');
+            var codeParam = queryParams.FirstOrDefault(p => p.StartsWith("code="));
+            if (codeParam != null)
+            {
+                var code = codeParam.Split('=')[1];
+                Dispatcher.Dispatch(new DiscordCallbackAction(code));
+            }
+        }
+        else if (uri.Query.Contains("error"))
+        {
+            // Handle Discord OAuth error
+        }
+    }
+
+    private void LoginWithEmail()
+    {
+        if (string.IsNullOrWhiteSpace(_loginModel.EmailOrUsername) || string.IsNullOrWhiteSpace(_loginModel.Password))
+            return;
+
+        Dispatcher.Dispatch(new LoginAction(_loginModel.EmailOrUsername, _loginModel.Password));
+    }
+
+    private void LoginWithDiscord()
+    {
+        Dispatcher.Dispatch(new DiscordLoginAction());
+    }
+
+    private void ShowEmailLogin()
+    {
+        _showEmailLogin = true;
+    }
+
+    private void HideEmailLogin()
+    {
+        _showEmailLogin = false;
+        _loginModel = new LoginModel();
+    }
+
+    public class LoginModel
+    {
+        [Required(ErrorMessage = "Email or username is required")]
+        public string EmailOrUsername { get; set; } = string.Empty;
+        
+        [Required(ErrorMessage = "Password is required")]
+        public string Password { get; set; } = string.Empty;
+    }
+}

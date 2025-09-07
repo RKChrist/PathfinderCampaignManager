@@ -1,0 +1,1093 @@
+@page "/characters/create"
+@page "/campaigns/{campaignId:guid}/characters/create"
+@using PathfinderCampaignManager.Domain.Enums
+@using PathfinderCampaignManager.Domain.Interfaces
+@using PathfinderCampaignManager.Presentation.Client.Components.Auth
+@inject IJSRuntime JSRuntime
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Character Wizard</PageTitle>
+
+<AuthGuard CustomMessage="You must be logged in to create characters." RedirectToLogin="true">
+
+<div class="character-wizard">
+    <!-- Wizard Header with Stepper -->
+    <div class="wizard-header">
+        <div class="wizard-stepper">
+            @for (int i = 0; i < WizardSteps.Count; i++)
+            {
+                var step = WizardSteps[i];
+                var isActive = i == currentStepIndex;
+                var isComplete = i < currentStepIndex;
+                var hasErrors = stepValidation.ContainsKey(i) && stepValidation[i].Any(v => v.Severity == ValidationSeverity.Error);
+
+                <div class="wizard-step @(isActive ? "active" : "") @(isComplete ? "complete" : "") @(hasErrors ? "error" : "")">
+                    <div class="step-indicator">
+                        @if (isComplete)
+                        {
+                            <i class="fas fa-check"></i>
+                        }
+                        else if (hasErrors)
+                        {
+                            <i class="fas fa-exclamation"></i>
+                        }
+                        else
+                        {
+                            <span>@(i + 1)</span>
+                        }
+                    </div>
+                    <div class="step-label">@step.Name</div>
+                    @if (hasErrors)
+                    {
+                        <div class="step-errors">@stepValidation[i].Count(v => v.Severity == ValidationSeverity.Error) errors</div>
+                    }
+                </div>
+                
+                @if (i < WizardSteps.Count - 1)
+                {
+                    <div class="step-connector"></div>
+                }
+            }
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="wizard-actions">
+            <button class="btn btn-outline-secondary" @onclick="LoadPreset" title="Load Preset (P)">
+                <i class="fas fa-magic"></i>
+                Quick Picks
+            </button>
+            <button class="btn btn-outline-secondary" @onclick="ToggleCompare" title="Compare Mode (Shift)">
+                <i class="fas fa-columns"></i>
+                Compare
+            </button>
+        </div>
+    </div>
+
+    <div class="wizard-content">
+        <!-- Left Rail: Character Summary -->
+        <div class="character-summary">
+            <div class="summary-card">
+                <div class="character-header">
+                    <div class="character-portrait">
+                        @if (string.IsNullOrEmpty(characterDraft.Name))
+                        {
+                            <div class="portrait-placeholder">
+                                <i class="fas fa-user"></i>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="portrait-initials">
+                                @characterDraft.Name.Substring(0, Math.Min(2, characterDraft.Name.Length)).ToUpper()
+                            </div>
+                        }
+                    </div>
+                    <div class="character-info">
+                        <h3>@(string.IsNullOrEmpty(characterDraft.Name) ? "New Character" : characterDraft.Name)</h3>
+                        <p class="character-subtitle">
+                            Level @characterDraft.Level
+                            @if (!string.IsNullOrEmpty(characterDraft.Ancestry))
+                            {
+                                <text> @characterDraft.Ancestry</text>
+                            }
+                            @if (!string.IsNullOrEmpty(characterDraft.Class))
+                            {
+                                <text> @characterDraft.Class</text>
+                            }
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Live Ability Scores -->
+                @if (calculatedCharacter != null)
+                {
+                    <div class="ability-scores">
+                        <h4>Ability Scores</h4>
+                        <div class="scores-grid">
+                            @foreach (var score in calculatedCharacter.AbilityScores)
+                            {
+                                <div class="score-block">
+                                    <div class="score-name">@score.Key.Substring(0, 3).ToUpper()</div>
+                                    <div class="score-value">@score.Value</div>
+                                    <div class="score-modifier">@FormatModifier(calculatedCharacter.AbilityModifiers[score.Key])</div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Combat Stats -->
+                    <div class="combat-stats">
+                        <div class="stat-row">
+                            <span class="stat-label">AC</span>
+                            <span class="stat-value">@calculatedCharacter.ArmorClass</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">HP</span>
+                            <span class="stat-value">@calculatedCharacter.HitPoints</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Initiative</span>
+                            <span class="stat-value">@FormatModifier(calculatedCharacter.Initiative)</span>
+                        </div>
+                    </div>
+                }
+
+                <!-- Legality Status -->
+                <div class="legality-status">
+                    @if (calculatedCharacter?.ValidationIssues.Any(v => v.Severity == ValidationSeverity.Error) == true)
+                    {
+                        <div class="status-indicator error">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            @calculatedCharacter.ValidationIssues.Count(v => v.Severity == ValidationSeverity.Error) Errors
+                        </div>
+                    }
+                    else if (calculatedCharacter?.ValidationIssues.Any(v => v.Severity == ValidationSeverity.Warning) == true)
+                    {
+                        <div class="status-indicator warning">
+                            <i class="fas fa-exclamation-circle"></i>
+                            @calculatedCharacter.ValidationIssues.Count(v => v.Severity == ValidationSeverity.Warning) Warnings
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="status-indicator valid">
+                            <i class="fas fa-check-circle"></i>
+                            Character Valid
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="wizard-main">
+            <!-- Current Step Content -->
+            <div class="step-content">
+                @if (currentStepIndex < WizardSteps.Count)
+                {
+                    @switch (WizardSteps[currentStepIndex].Id)
+                    {
+                        case "ancestry":
+                            <CharacterWizardAncestryStep @bind-Value="@characterDraft" 
+                                                        AvailableOptions="ancestryOptions"
+                                                        IsLoading="isLoading"
+                                                        OnChanged="OnStepChanged" />
+                            break;
+                        case "background":
+                            <CharacterWizardBackgroundStep @bind-Value="characterDraft" 
+                                                          AvailableOptions="backgroundOptions"
+                                                          IsLoading="isLoading"
+                                                          OnChanged="OnStepChanged" />
+                            break;
+                        case "class":
+                            <CharacterWizardClassStep @bind-Value="characterDraft" 
+                                                     AvailableOptions="classOptions"
+                                                     IsLoading="isLoading"
+                                                     OnChanged="OnStepChanged" />
+                            break;
+                        case "abilities":
+                            <CharacterWizardAbilityStep @bind-Value="characterDraft" 
+                                                       CalculatedCharacter="calculatedCharacter"
+                                                       IsLoading="isLoading"
+                                       OnChanged="OnStepChanged" />
+                            break;
+                        case "review":
+                            <CharacterWizardReviewStep Character="characterDraft" 
+                                                      CalculatedCharacter="calculatedCharacter"
+                                                      ValidationIssues="calculatedCharacter?.ValidationIssues ?? new List<ValidationIssue>()" />
+                            break;
+                    }
+                }
+            </div>
+        </div>
+
+        <!-- Right Panel: Quick Picks & Context Help -->
+        <div class="wizard-sidebar">
+            <div class="quick-picks-panel">
+                <h4>
+                    <i class="fas fa-lightbulb"></i>
+                    Quick Picks
+                </h4>
+                
+                @if (quickPicks.Any())
+                {
+                    <div class="picks-list">
+                        @foreach (var pick in quickPicks.Take(5))
+                        {
+                            <div class="quick-pick-item" @onclick="() => ApplyQuickPick(pick)">
+                                <div class="pick-header">
+                                    <span class="pick-name">@pick.Name</span>
+                                    <span class="pick-score">@pick.Score%</span>
+                                </div>
+                                <div class="pick-description">@pick.Description</div>
+                                @if (pick.Tags.Any())
+                                {
+                                    <div class="pick-tags">
+                                        @foreach (var tag in pick.Tags.Take(3))
+                                        {
+                                            <span class="tag">@tag</span>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="no-picks">
+                        <p>Complete more steps to see personalized suggestions.</p>
+                    </div>
+                }
+            </div>
+
+            <!-- Preset Templates -->
+            <div class="presets-panel">
+                <h4>
+                    <i class="fas fa-star"></i>
+                    Quick Start
+                </h4>
+                <div class="preset-list">
+                    @foreach (var preset in characterPresets)
+                    {
+                        <button class="preset-button" @onclick="() => LoadCharacterPreset(preset)">
+                            <div class="preset-icon">
+                                <i class="@preset.IconClass"></i>
+                            </div>
+                            <div class="preset-info">
+                                <div class="preset-name">@preset.Name</div>
+                                <div class="preset-description">@preset.Description</div>
+                            </div>
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Wizard Navigation -->
+    <div class="wizard-navigation">
+        <button class="btn btn-secondary" 
+                @onclick="PreviousStep" 
+                disabled="@(currentStepIndex == 0 || isLoading)">
+            <i class="fas fa-chevron-left"></i>
+            Previous
+        </button>
+
+        <div class="nav-status">
+            Step @(currentStepIndex + 1) of @WizardSteps.Count
+        </div>
+
+        @if (currentStepIndex < WizardSteps.Count - 1)
+        {
+            <button class="btn btn-primary" 
+                    @onclick="NextStep" 
+                    disabled="@(isLoading || !CanProceedToNextStep())">
+                Next
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        }
+        else
+        {
+            <button class="btn btn-success" 
+                    @onclick="CreateCharacter" 
+                    disabled="@(isLoading || calculatedCharacter?.ValidationIssues.Any(v => v.Severity == ValidationSeverity.Error) == true)">
+                @if (isLoading)
+                {
+                    <i class="fas fa-spinner fa-spin"></i>
+                }
+                else
+                {
+                    <i class="fas fa-check"></i>
+                }
+                Create Character
+            </button>
+        }
+    </div>
+</div>
+
+</AuthGuard>
+
+<style>
+.character-wizard {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: var(--surface-background);
+}
+
+.wizard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background: white;
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.wizard-stepper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.wizard-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    opacity: 0.6;
+    transition: all 0.2s ease;
+}
+
+.wizard-step.active {
+    opacity: 1;
+    color: var(--primary-color);
+}
+
+.wizard-step.complete {
+    opacity: 0.8;
+    color: var(--success-color);
+}
+
+.wizard-step.error {
+    opacity: 1;
+    color: var(--error-color);
+}
+
+.step-indicator {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface-background);
+    border: 2px solid currentColor;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.wizard-step.active .step-indicator {
+    background: var(--primary-color);
+    color: white;
+}
+
+.wizard-step.complete .step-indicator {
+    background: var(--success-color);
+    color: white;
+}
+
+.wizard-step.error .step-indicator {
+    background: var(--error-color);
+    color: white;
+}
+
+.step-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.step-errors {
+    font-size: 0.625rem;
+    color: var(--error-color);
+}
+
+.step-connector {
+    width: 2rem;
+    height: 2px;
+    background: var(--border-color);
+    margin: 0 0.5rem;
+}
+
+.wizard-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.character-summary {
+    width: 280px;
+    background: white;
+    border-right: 1px solid var(--border-color);
+    padding: 1.5rem;
+    overflow-y: auto;
+}
+
+.summary-card {
+    position: sticky;
+    top: 0;
+}
+
+.character-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.character-portrait {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+}
+
+.character-info h3 {
+    margin: 0;
+    font-size: 1.125rem;
+    color: var(--text-primary);
+}
+
+.character-subtitle {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.ability-scores h4 {
+    margin: 0 0 0.75rem 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.scores-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.score-block {
+    text-align: center;
+    padding: 0.5rem;
+    background: var(--surface-background);
+    border-radius: 0.375rem;
+}
+
+.score-name {
+    font-size: 0.625rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.score-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0.125rem 0;
+}
+
+.score-modifier {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.combat-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.375rem 0.75rem;
+    background: var(--surface-background);
+    border-radius: 0.375rem;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.stat-value {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.legality-status .status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.status-indicator.error {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--error-color);
+}
+
+.status-indicator.warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning-color);
+}
+
+.status-indicator.valid {
+    background: rgba(34, 197, 94, 0.1);
+    color: var(--success-color);
+}
+
+.wizard-main {
+    flex: 1;
+    padding: 2rem;
+    overflow-y: auto;
+}
+
+.wizard-sidebar {
+    width: 320px;
+    background: white;
+    border-left: 1px solid var(--border-color);
+    padding: 1.5rem;
+    overflow-y: auto;
+}
+
+.quick-picks-panel,
+.presets-panel {
+    margin-bottom: 2rem;
+}
+
+.quick-picks-panel h4,
+.presets-panel h4 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 1rem 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.quick-pick-item {
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.375rem;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.quick-pick-item:hover {
+    border-color: var(--primary-color);
+    background: var(--primary-color-10);
+}
+
+.pick-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.25rem;
+}
+
+.pick-name {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.pick-score {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--success-color);
+}
+
+.pick-description {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.pick-tags {
+    display: flex;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+}
+
+.tag {
+    display: inline-block;
+    padding: 0.125rem 0.375rem;
+    background: var(--surface-background);
+    border-radius: 0.25rem;
+    font-size: 0.625rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.preset-button {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.75rem;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 0.375rem;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+}
+
+.preset-button:hover {
+    border-color: var(--primary-color);
+    background: var(--primary-color-10);
+}
+
+.preset-icon {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary-color-20);
+    border-radius: 0.375rem;
+    color: var(--primary-color);
+}
+
+.preset-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.125rem;
+}
+
+.preset-description {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.wizard-navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 2rem;
+    background: white;
+    border-top: 1px solid var(--border-color);
+}
+
+.nav-status {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+/* Performance optimizations */
+.wizard-content {
+    contain: layout style;
+}
+
+.step-content {
+    contain: layout;
+}
+
+/* Focus management */
+.wizard-step:focus-visible,
+.quick-pick-item:focus-visible,
+.preset-button:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+</style>
+
+@code {
+    [Parameter] public Guid? CampaignId { get; set; }
+
+    private int currentStepIndex = 0;
+    private bool isLoading = false;
+    private bool showCompareMode = false;
+    
+    private CharacterDraft characterDraft = new();
+    private CalculatedCharacter? calculatedCharacter;
+    private Dictionary<int, List<ValidationIssue>> stepValidation = new();
+    
+    // Options for each step
+    private List<object> ancestryOptions = new();
+    private List<object> backgroundOptions = new();
+    private List<object> classOptions = new();
+    
+    // Quick picks and suggestions
+    private List<QuickPick> quickPicks = new();
+    private List<CharacterPreset> characterPresets = new();
+
+    private List<WizardStep> WizardSteps = new()
+    {
+        new("ancestry", "Ancestry", "Choose your character's heritage"),
+        new("background", "Background", "Select your character's past"),
+        new("class", "Class", "Pick your character's profession"),
+        new("abilities", "Abilities", "Assign ability scores"),
+        new("review", "Review", "Finalize your character")
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        characterDraft.Level = 1;
+        
+        // Load presets
+        characterPresets = GetCharacterPresets();
+        
+        // Load options for first step
+        await LoadStepOptions();
+        
+        // Setup keyboard shortcuts
+        await JSRuntime.InvokeVoidAsync("setupWizardHotkeys");
+    }
+
+    private async Task LoadStepOptions()
+    {
+        isLoading = true;
+        
+        try
+        {
+            switch (WizardSteps[currentStepIndex].Id)
+            {
+                case "ancestry":
+                    // ancestryOptions = await LoadAncestryOptions();
+                    break;
+                case "background":
+                    // backgroundOptions = await LoadBackgroundOptions();
+                    break;
+                case "class":
+                    // classOptions = await LoadClassOptions();
+                    break;
+            }
+            
+            await UpdateQuickPicks();
+            await RecalculateCharacter();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task OnStepChanged()
+    {
+        await RecalculateCharacter();
+        await UpdateQuickPicks();
+        ValidateCurrentStep();
+    }
+
+    private async Task RecalculateCharacter()
+    {
+        if (string.IsNullOrEmpty(characterDraft.Name)) return;
+        
+        try
+        {
+            // In real implementation, call character calculator
+            // calculatedCharacter = await Http.PostAsJsonAsync("api/characters/calculate", characterDraft);
+            
+            // For now, create mock calculated character
+            calculatedCharacter = new CalculatedCharacter
+            {
+                Id = Guid.NewGuid(),
+                Name = characterDraft.Name,
+                Level = characterDraft.Level,
+                AbilityScores = new Dictionary<string, int>
+                {
+                    ["Strength"] = 14,
+                    ["Dexterity"] = 12,
+                    ["Constitution"] = 13,
+                    ["Intelligence"] = 10,
+                    ["Wisdom"] = 15,
+                    ["Charisma"] = 8
+                },
+                ValidationIssues = new List<ValidationIssue>()
+            };
+            
+            // Calculate modifiers
+            calculatedCharacter.AbilityModifiers = calculatedCharacter.AbilityScores.ToDictionary(
+                kvp => kvp.Key,
+                kvp => (kvp.Value - 10) / 2
+            );
+            
+            calculatedCharacter.ArmorClass = 10 + calculatedCharacter.AbilityModifiers["Dexterity"];
+            calculatedCharacter.HitPoints = 8 + calculatedCharacter.AbilityModifiers["Constitution"];
+            calculatedCharacter.Initiative = calculatedCharacter.AbilityModifiers["Dexterity"];
+        }
+        catch (Exception ex)
+        {
+            // Handle calculation errors
+            Console.WriteLine($"Character calculation failed: {ex.Message}");
+        }
+    }
+
+    private async Task UpdateQuickPicks()
+    {
+        // Generate context-aware suggestions
+        quickPicks.Clear();
+        
+        var step = WizardSteps[currentStepIndex];
+        
+        switch (step.Id)
+        {
+            case "ancestry":
+                quickPicks.AddRange(GetAncestryQuickPicks());
+                break;
+            case "class":
+                quickPicks.AddRange(GetClassQuickPicks());
+                break;
+        }
+        
+        // Sort by relevance score
+        quickPicks = quickPicks.OrderByDescending(p => p.Score).ToList();
+    }
+
+    private void ValidateCurrentStep()
+    {
+        var issues = new List<ValidationIssue>();
+        var step = WizardSteps[currentStepIndex];
+        
+        switch (step.Id)
+        {
+            case "ancestry":
+                if (string.IsNullOrEmpty(characterDraft.Ancestry))
+                {
+                    issues.Add(new ValidationIssue
+                    {
+                        Severity = ValidationSeverity.Error,
+                        Message = "You must select an ancestry",
+                        Category = "Ancestry"
+                    });
+                }
+                break;
+        }
+        
+        stepValidation[currentStepIndex] = issues;
+    }
+
+    private bool CanProceedToNextStep()
+    {
+        return !stepValidation.ContainsKey(currentStepIndex) || 
+               !stepValidation[currentStepIndex].Any(v => v.Severity == ValidationSeverity.Error);
+    }
+
+    private async Task PreviousStep()
+    {
+        if (currentStepIndex > 0)
+        {
+            currentStepIndex--;
+            await LoadStepOptions();
+        }
+    }
+
+    private async Task NextStep()
+    {
+        if (currentStepIndex < WizardSteps.Count - 1 && CanProceedToNextStep())
+        {
+            currentStepIndex++;
+            await LoadStepOptions();
+        }
+    }
+
+    private async Task CreateCharacter()
+    {
+        if (calculatedCharacter?.ValidationIssues.Any(v => v.Severity == ValidationSeverity.Error) == true)
+            return;
+            
+        isLoading = true;
+        
+        try
+        {
+            // Create character data request
+            var createRequest = new
+            {
+                Name = characterDraft.Name,
+                Level = characterDraft.Level,
+                Ancestry = characterDraft.Ancestry,
+                Heritage = string.Empty, // Not available in current draft
+                Background = characterDraft.Background,
+                Class = characterDraft.Class,
+                AbilityScores = characterDraft.AbilityBoosts, // Using AbilityBoosts instead
+                Skills = new Dictionary<string, string>(), // Not available in current draft
+                Feats = characterDraft.SelectedFeats,
+                Equipment = new List<string>(), // Not available in current draft
+                CampaignId = CampaignId // Associate with campaign if provided
+            };
+            
+            var response = await Http.PostAsJsonAsync("api/characters", createRequest);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var characterId = await response.Content.ReadFromJsonAsync<Guid>();
+                
+                // If created for a campaign, navigate back to campaign
+                if (CampaignId.HasValue)
+                {
+                    Navigation.NavigateTo($"/campaigns/{CampaignId}?characterCreated=true");
+                }
+                else
+                {
+                    Navigation.NavigateTo($"/characters/{characterId}");
+                }
+            }
+            else
+            {
+                var errorMessage = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Character creation failed: {errorMessage}");
+                await JSRuntime.InvokeAsync<object>("alert", $"Failed to create character: {errorMessage}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Character creation failed: {ex.Message}");
+            await JSRuntime.InvokeAsync<object>("alert", $"Failed to create character: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ApplyQuickPick(QuickPick pick)
+    {
+        // Apply the quick pick suggestion
+        switch (pick.Type)
+        {
+            case "ancestry":
+                characterDraft.Ancestry = pick.Value;
+                break;
+            case "class":
+                characterDraft.Class = pick.Value;
+                break;
+        }
+        
+        _ = OnStepChanged();
+    }
+
+    private void LoadCharacterPreset(CharacterPreset preset)
+    {
+        // Apply preset to character draft
+        characterDraft.Name = $"New {preset.Name}";
+        characterDraft.Ancestry = preset.DefaultAncestry;
+        characterDraft.Class = preset.DefaultClass;
+        
+        _ = OnStepChanged();
+    }
+
+    private void ToggleCompare()
+    {
+        showCompareMode = !showCompareMode;
+    }
+
+    private void LoadPreset()
+    {
+        // Show preset selection modal
+    }
+
+    private string FormatModifier(int modifier)
+    {
+        return modifier >= 0 ? $"+{modifier}" : modifier.ToString();
+    }
+
+    private List<QuickPick> GetAncestryQuickPicks()
+    {
+        return new List<QuickPick>
+        {
+            new("Human", "ancestry", "Human", "Versatile and adaptable", 85, new[] {"Versatile", "Popular"}),
+            new("Elf", "ancestry", "Elf", "Graceful and magical", 75, new[] {"Dexterous", "Magic"}),
+            new("Dwarf", "ancestry", "Dwarf", "Hardy and traditional", 70, new[] {"Sturdy", "Crafting"})
+        };
+    }
+
+    private List<QuickPick> GetClassQuickPicks()
+    {
+        return new List<QuickPick>
+        {
+            new("Fighter", "class", "Fighter", "Versatile warrior", 90, new[] {"Martial", "Beginner-friendly"}),
+            new("Wizard", "class", "Wizard", "Master of magic", 75, new[] {"Spellcaster", "Complex"}),
+            new("Rogue", "class", "Rogue", "Skilled infiltrator", 80, new[] {"Skills", "Damage"})
+        };
+    }
+
+    private List<CharacterPreset> GetCharacterPresets()
+    {
+        return new List<CharacterPreset>
+        {
+            new("Martial Starter", "A straightforward fighter build", "fas fa-sword", "Human", "Fighter"),
+            new("Divine Healer", "Support-focused cleric", "fas fa-cross", "Human", "Cleric"),
+            new("Skill Monkey", "Versatile problem solver", "fas fa-tools", "Human", "Rogue"),
+            new("Blaster", "Damage-dealing wizard", "fas fa-fire", "Elf", "Wizard"),
+            new("Tank", "Defensive champion", "fas fa-shield", "Dwarf", "Champion")
+        };
+    }
+
+    public class WizardStep
+    {
+        public string Id { get; set; }
+        public string Name { get; set; }
+        public string Description { get; set; }
+
+        public WizardStep(string id, string name, string description)
+        {
+            Id = id;
+            Name = name;
+            Description = description;
+        }
+    }
+
+    public class CharacterDraft
+    {
+        public string Name { get; set; } = string.Empty;
+        public int Level { get; set; } = 1;
+        public string Ancestry { get; set; } = string.Empty;
+        public string Background { get; set; } = string.Empty;
+        public string Class { get; set; } = string.Empty;
+        public Dictionary<string, int> AbilityBoosts { get; set; } = new();
+        public List<string> SelectedFeats { get; set; } = new();
+    }
+
+    public class QuickPick
+    {
+        public string Name { get; set; }
+        public string Type { get; set; }
+        public string Value { get; set; }
+        public string Description { get; set; }
+        public int Score { get; set; }
+        public string[] Tags { get; set; }
+
+        public QuickPick(string name, string type, string value, string description, int score, string[] tags)
+        {
+            Name = name;
+            Type = type;
+            Value = value;
+            Description = description;
+            Score = score;
+            Tags = tags;
+        }
+    }
+
+    public class CharacterPreset
+    {
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public string IconClass { get; set; }
+        public string DefaultAncestry { get; set; }
+        public string DefaultClass { get; set; }
+
+        public CharacterPreset(string name, string description, string iconClass, string defaultAncestry, string defaultClass)
+        {
+            Name = name;
+            Description = description;
+            IconClass = iconClass;
+            DefaultAncestry = defaultAncestry;
+            DefaultClass = defaultClass;
+        }
+    }
+}

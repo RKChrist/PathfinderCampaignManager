@@ -1,0 +1,592 @@
+@page "/monsters/create"
+@page "/campaigns/{campaignId:guid}/monsters/create"
+@using PathfinderCampaignManager.Domain.Entities.Pathfinder
+@using PathfinderCampaignManager.Domain.Interfaces
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Monster Builder</PageTitle>
+
+<div class="monster-builder">
+    <!-- Header -->
+    <div class="builder-header">
+        <div class="header-info">
+            <h1>Monster Builder</h1>
+            <p>Create NPCs and monsters for your Pathfinder 2e campaign</p>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-outline-secondary" @onclick="LoadTemplate">
+                <i class="fas fa-file-import"></i>
+                Load Template
+            </button>
+            <button class="btn btn-success" @onclick="SaveMonster" disabled="@(!IsValid || isLoading)">
+                @if (isLoading)
+                {
+                    <i class="fas fa-spinner fa-spin"></i>
+                }
+                else
+                {
+                    <i class="fas fa-save"></i>
+                }
+                Save Monster
+            </button>
+        </div>
+    </div>
+
+    <div class="builder-content">
+        <!-- Left Panel: Monster Form -->
+        <div class="monster-form-panel">
+            <div class="form-sections">
+                <!-- Basic Info -->
+                <div class="form-section">
+                    <h3>Basic Information</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Name</label>
+                            <input type="text" class="form-control" @bind="monster.Name" placeholder="Monster Name" />
+                        </div>
+                        <div class="form-group">
+                            <label>Level</label>
+                            <input type="number" class="form-control" @bind="monster.Level" min="-1" max="25" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Size</label>
+                            <select class="form-control" @bind="monster.Size">
+                                <option value="Tiny">Tiny</option>
+                                <option value="Small">Small</option>
+                                <option value="Medium" selected>Medium</option>
+                                <option value="Large">Large</option>
+                                <option value="Huge">Huge</option>
+                                <option value="Gargantuan">Gargantuan</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Alignment</label>
+                            <select class="form-control" @bind="monster.Alignment">
+                                <option value="LG">Lawful Good</option>
+                                <option value="NG">Neutral Good</option>
+                                <option value="CG">Chaotic Good</option>
+                                <option value="LN">Lawful Neutral</option>
+                                <option value="N" selected>True Neutral</option>
+                                <option value="CN">Chaotic Neutral</option>
+                                <option value="LE">Lawful Evil</option>
+                                <option value="NE">Neutral Evil</option>
+                                <option value="CE">Chaotic Evil</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Rarity</label>
+                            <select class="form-control" @bind="monster.Rarity">
+                                <option value="Common" selected>Common</option>
+                                <option value="Uncommon">Uncommon</option>
+                                <option value="Rare">Rare</option>
+                                <option value="Unique">Unique</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Traits (comma-separated)</label>
+                        <input type="text" class="form-control" @bind="traitsInput" placeholder="humanoid, orc, warrior" />
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea class="form-control" @bind="monster.Description" rows="3" placeholder="Monster description..."></textarea>
+                    </div>
+                </div>
+
+                <!-- Defenses -->
+                <div class="form-section">
+                    <h3>Defenses</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Armor Class</label>
+                            <input type="number" class="form-control" @bind="monster.ArmorClass" />
+                        </div>
+                        <div class="form-group">
+                            <label>Hit Points</label>
+                            <input type="number" class="form-control" @bind="monster.HitPoints" />
+                        </div>
+                        <div class="form-group">
+                            <label>HP Formula</label>
+                            <input type="text" class="form-control" @bind="monster.HitPointsFormula" placeholder="2d8+4" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Fortitude Save</label>
+                            <input type="number" class="form-control" @bind="monster.FortitudeSave" />
+                        </div>
+                        <div class="form-group">
+                            <label>Reflex Save</label>
+                            <input type="number" class="form-control" @bind="monster.ReflexSave" />
+                        </div>
+                        <div class="form-group">
+                            <label>Will Save</label>
+                            <input type="number" class="form-control" @bind="monster.WillSave" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Immunities</label>
+                            <input type="text" class="form-control" @bind="immunitiesInput" placeholder="fire, poison" />
+                        </div>
+                        <div class="form-group">
+                            <label>Resistances</label>
+                            <input type="text" class="form-control" @bind="resistancesInput" placeholder="fire 10, cold 5" />
+                        </div>
+                        <div class="form-group">
+                            <label>Weaknesses</label>
+                            <input type="text" class="form-control" @bind="weaknessesInput" placeholder="cold iron 5" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ability Scores -->
+                <div class="form-section">
+                    <h3>Ability Scores</h3>
+                    <div class="abilities-grid">
+                        <div class="ability-input">
+                            <label>Strength</label>
+                            <input type="number" class="form-control" @bind='monster.AbilityScores["Strength"]' />
+                        </div>
+                        <div class="ability-input">
+                            <label>Dexterity</label>
+                            <input type="number" class="form-control" @bind='monster.AbilityScores["Dexterity"]' />
+                        </div>
+                        <div class="ability-input">
+                            <label>Constitution</label>
+                            <input type="number" class="form-control" @bind='monster.AbilityScores["Constitution"]' />
+                        </div>
+                        <div class="ability-input">
+                            <label>Intelligence</label>
+                            <input type="number" class="form-control" @bind='monster.AbilityScores["Intelligence"]' />
+                        </div>
+                        <div class="ability-input">
+                            <label>Wisdom</label>
+                            <input type="number" class="form-control" @bind='monster.AbilityScores["Wisdom"]' />
+                        </div>
+                        <div class="ability-input">
+                            <label>Charisma</label>
+                            <input type="number" class="form-control" @bind='monster.AbilityScores["Charisma"]' />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Strikes/Attacks -->
+                <div class="form-section">
+                    <h3>Strikes & Attacks</h3>
+                    <div class="strikes-list">
+                        @foreach (var strike in monster.Strikes)
+                        {
+                            <div class="strike-editor">
+                                <div class="strike-header">
+                                    <input type="text" class="form-control" @bind="strike.Name" placeholder="Strike Name" />
+                                    <button type="button" class="btn btn-outline-danger btn-sm" @onclick="() => RemoveStrike(strike)">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                <div class="strike-fields">
+                                    <div class="field-group">
+                                        <label>Attack Bonus</label>
+                                        <input type="number" class="form-control" @bind="strike.AttackBonus" />
+                                    </div>
+                                    <div class="field-group">
+                                        <label>Damage</label>
+                                        <input type="text" class="form-control" @bind="strike.DamageFormula" placeholder="1d8+3" />
+                                    </div>
+                                    <div class="field-group">
+                                        <label>Damage Type</label>
+                                        <input type="text" class="form-control" @bind="strike.DamageType" placeholder="slashing" />
+                                    </div>
+                                    <div class="field-group">
+                                        <label>Range</label>
+                                        <select class="form-control" @bind="strike.Range">
+                                            <option value="melee">Melee</option>
+                                            <option value="ranged">Ranged</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="field-group">
+                                    <label>Traits</label>
+                                    <input type="text" class="form-control" @bind="strikeTraitsInputs[strike]" placeholder="agile, finesse" />
+                                </div>
+                            </div>
+                        }
+                        <button type="button" class="btn btn-outline-primary" @onclick="AddStrike">
+                            <i class="fas fa-plus"></i>
+                            Add Strike
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Skills & Senses -->
+                <div class="form-section">
+                    <h3>Skills & Senses</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Perception</label>
+                            <input type="number" class="form-control" @bind="monster.Perception" />
+                        </div>
+                        <div class="form-group">
+                            <label>Languages</label>
+                            <input type="text" class="form-control" @bind="languagesInput" placeholder="Common, Orcish" />
+                        </div>
+                        <div class="form-group">
+                            <label>Senses</label>
+                            <input type="text" class="form-control" @bind="sensesInput" placeholder="darkvision, scent" />
+                        </div>
+                    </div>
+                    <div class="skills-section">
+                        <label>Skills</label>
+                        <div class="skills-grid">
+                            @foreach (var skill in skillNames)
+                            {
+                                <div class="skill-input">
+                                    <label>@skill</label>
+                                    <input type="number" class="form-control" @bind="monster.Skills[skill]" />
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Monster Preview -->
+        <div class="monster-preview-panel">
+            <div class="preview-card">
+                <div class="monster-preview">
+                    <div class="monster-header">
+                        <h2>@(string.IsNullOrEmpty(monster.Name) ? "New Monster" : monster.Name) <span class="monster-level">@monster.Level</span></h2>
+                        <p class="monster-traits">
+                            @if (monster.Traits.Any())
+                            {
+                                @string.Join(", ", monster.Traits)
+                            }
+                            else
+                            {
+                                <em>No traits</em>
+                            }
+                        </p>
+                    </div>
+
+                    <div class="monster-stats">
+                        <div class="stat-block">
+                            <div class="stat-row">
+                                <strong>AC:</strong> @monster.ArmorClass
+                            </div>
+                            <div class="stat-row">
+                                <strong>HP:</strong> @monster.HitPoints @(!string.IsNullOrEmpty(monster.HitPointsFormula) ? $"({monster.HitPointsFormula})" : "")
+                            </div>
+                            <div class="stat-row">
+                                <strong>Saves:</strong> Fort @FormatModifier(monster.FortitudeSave), Ref @FormatModifier(monster.ReflexSave), Will @FormatModifier(monster.WillSave)
+                            </div>
+                        </div>
+
+                        <div class="stat-block">
+                            <div class="stat-row">
+                                <strong>Speed:</strong> @(monster.Speeds.TryGetValue("land", out var landSpeed) ? $"{landSpeed} feet" : "25 feet")
+                            </div>
+                            <div class="stat-row">
+                                <strong>Perception:</strong> @FormatModifier(monster.Perception)
+                            </div>
+                        </div>
+
+                        @if (monster.Strikes.Any())
+                        {
+                            <div class="stat-block">
+                                <h4>Strikes</h4>
+                                @foreach (var strike in monster.Strikes)
+                                {
+                                    <div class="strike-preview">
+                                        <strong>@strike.Name</strong> @FormatModifier(strike.AttackBonus) (@strike.Range), 
+                                        <strong>Damage</strong> @strike.DamageFormula @strike.DamageType
+                                        @if (strike.Traits.Any())
+                                        {
+                                            <span class="traits">(@string.Join(", ", strike.Traits))</span>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.monster-builder {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: var(--surface-background);
+}
+
+.builder-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 2rem;
+    background: white;
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.header-info h1 {
+    margin: 0 0 0.25rem 0;
+    color: var(--text-primary);
+}
+
+.header-info p {
+    margin: 0;
+    color: var(--text-secondary);
+}
+
+.header-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.builder-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.monster-form-panel {
+    flex: 1;
+    padding: 2rem;
+    overflow-y: auto;
+    background: white;
+}
+
+.monster-preview-panel {
+    width: 400px;
+    background: var(--surface-background);
+    border-left: 1px solid var(--border-color);
+    padding: 2rem;
+    overflow-y: auto;
+}
+
+.form-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.form-section {
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    background: white;
+}
+
+.form-section h3 {
+    margin: 0 0 1.5rem 0;
+    color: var(--text-primary);
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.abilities-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+.ability-input {
+    display: flex;
+    flex-direction: column;
+}
+
+.strikes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.strike-editor {
+    border: 1px solid var(--border-color);
+    border-radius: 0.375rem;
+    padding: 1rem;
+    background: var(--surface-background);
+}
+
+.strike-header {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.strike-header input {
+    flex: 1;
+}
+
+.strike-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.field-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.field-group label {
+    margin-bottom: 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.skills-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+}
+
+.skill-input {
+    display: flex;
+    flex-direction: column;
+}
+
+.skill-input label {
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+}
+
+.preview-card {
+    position: sticky;
+    top: 0;
+    background: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    padding: 1.5rem;
+}
+
+.monster-header h2 {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-primary);
+}
+
+.monster-level {
+    color: var(--primary-color);
+    font-weight: normal;
+}
+
+.monster-traits {
+    margin: 0 0 1.5rem 0;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.stat-block {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.stat-block:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.stat-row {
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.strike-preview {
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.4;
+}
+
+.traits {
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.form-control {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px var(--primary-color-20);
+}
+
+.btn {
+    padding: 0.5rem 1rem;
+    border: 1px solid;
+    border-radius: 0.375rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-success {
+    background: var(--success-color);
+    border-color: var(--success-color);
+    color: white;
+}
+
+.btn-outline-primary {
+    background: transparent;
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.btn-outline-secondary {
+    background: transparent;
+    border-color: var(--text-secondary);
+    color: var(--text-secondary);
+}
+
+.btn-outline-danger {
+    background: transparent;
+    border-color: var(--error-color);
+    color: var(--error-color);
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+</style>

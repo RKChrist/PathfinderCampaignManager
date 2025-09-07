@@ -1,0 +1,191 @@
+@using PathfinderCampaignManager.Domain.Entities.Pathfinder
+@inject HttpClient Http
+
+<div class="archetype-selector">
+    <div class="archetype-header mb-4">
+        <h4>
+            <i class="fas fa-star-of-david me-2"></i>
+            @(IsFreeArchetype ? "Free Archetype Selection" : "Archetype Selection")
+        </h4>
+        @if (IsFreeArchetype)
+        {
+            <p class="text-muted">
+                Select an archetype for your free archetype feat at level @CurrentLevel. 
+                This doesn't count against your normal class feat progression.
+            </p>
+        }
+        else
+        {
+            <p class="text-muted">
+                Choose an archetype dedication feat to gain access to new abilities and specializations.
+            </p>
+        }
+    </div>
+
+    @if (_isLoading)
+    {
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading archetypes...</span>
+            </div>
+            <p class="mt-2 text-muted">Loading available archetypes...</p>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            @_errorMessage
+        </div>
+    }
+    else
+    {
+        <!-- Archetype Type Tabs -->
+        <div class="archetype-tabs mb-4">
+            <ul class="nav nav-pills" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link @(_selectedTab == "multiclass" ? "active" : "")" 
+                            @onclick="@(() => SetActiveTab("multiclass"))"
+                            type="button">
+                        <i class="fas fa-users me-2"></i>
+                        Multiclass (@_multiclassArchetypes.Count())
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link @(_selectedTab == "general" ? "active" : "")" 
+                            @onclick="@(() => SetActiveTab("general"))"
+                            type="button">
+                        <i class="fas fa-star me-2"></i>
+                        General (@_generalArchetypes.Count())
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link @(_selectedTab == "class" ? "active" : "")" 
+                            @onclick="@(() => SetActiveTab("class"))"
+                            type="button">
+                        <i class="fas fa-shield-alt me-2"></i>
+                        Class (@_classArchetypes.Count())
+                    </button>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Search and Filters -->
+        <div class="archetype-filters mb-4">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" class="form-control" placeholder="Search archetypes..."
+                               @bind="_searchTerm" @oninput="OnSearchChanged" />
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <select class="form-select" @bind="_selectedSource" @bind:after="OnSourceChangedAsync">
+                        <option value="">All Sources</option>
+                        <option value="Core Rulebook">Core Rulebook</option>
+                        <option value="Advanced Player's Guide">Advanced Player's Guide</option>
+                        <option value="Secrets of Magic">Secrets of Magic</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Archetype Grid -->
+        <div class="archetype-grid">
+            @foreach (var archetype in GetFilteredArchetypes())
+            {
+                <div class="archetype-card @(IsSelected(archetype) ? "selected" : "") @(CanSelect(archetype) ? "" : "disabled")"
+                     @onclick="() => SelectArchetype(archetype)">
+                    
+                    <div class="archetype-card-header">
+                        <div class="archetype-icon">
+                            <i class="@GetArchetypeIcon(archetype)"></i>
+                        </div>
+                        <div class="archetype-title">
+                            <h5 class="archetype-name">@archetype.Name</h5>
+                            <div class="archetype-type">
+                                <span class="badge bg-@GetArchetypeTypeBadgeColor(archetype.Type)">
+                                    @archetype.Type
+                                </span>
+                                @if (!string.IsNullOrEmpty(archetype.AssociatedClassId))
+                                {
+                                    <span class="badge bg-secondary ms-1">
+                                        @GetClassName(archetype.AssociatedClassId)
+                                    </span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="archetype-card-body">
+                        <p class="archetype-description">@archetype.Description</p>
+                        
+                        @if (archetype.Prerequisites.Any())
+                        {
+                            <div class="archetype-prerequisites">
+                                <strong>Prerequisites:</strong>
+                                <ul class="mb-0">
+                                    @foreach (var prerequisite in archetype.Prerequisites)
+                                    {
+                                        <li class="@(ValidatePrerequisite(prerequisite) ? "text-success" : "text-danger")">
+                                            @FormatPrerequisite(prerequisite)
+                                            @if (ValidatePrerequisite(prerequisite))
+                                            {
+                                                <i class="fas fa-check ms-1"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="fas fa-times ms-1"></i>
+                                            }
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        }
+
+                        @if (archetype.Traits.Any())
+                        {
+                            <div class="archetype-traits mt-3">
+                                @foreach (var trait in archetype.Traits.Take(3))
+                                {
+                                    <span class="trait-badge">@trait</span>
+                                }
+                                @if (archetype.Traits.Count > 3)
+                                {
+                                    <span class="trait-badge">+@(archetype.Traits.Count - 3)</span>
+                                }
+                            </div>
+                        }
+                    </div>
+
+                    @if (IsSelected(archetype))
+                    {
+                        <div class="archetype-card-footer">
+                            <button class="btn btn-primary btn-sm" @onclick="() => ViewDetails(archetype)">
+                                <i class="fas fa-info-circle me-1"></i>
+                                View Details
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" @onclick="() => ClearSelection()">
+                                <i class="fas fa-times me-1"></i>
+                                Clear
+                            </button>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        @if (!GetFilteredArchetypes().Any())
+        {
+            <div class="text-center py-5">
+                <div class="mb-4">
+                    <i class="fas fa-search fa-3x text-muted"></i>
+                </div>
+                <h5>No Archetypes Found</h5>
+                <p class="text-muted">Try adjusting your search criteria or filters.</p>
+            </div>
+        }
+    }
+</div>
+

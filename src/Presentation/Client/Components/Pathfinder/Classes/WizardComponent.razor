@@ -1,0 +1,233 @@
+@using PathfinderCampaignManager.Application.CharacterCreation.Models
+@using PathfinderCampaignManager.Domain.Enums
+
+<div class="pf2e-class-component wizard-class">
+    <div class="class-header">
+        <div class="class-icon">
+            <i class="fas fa-hat-wizard"></i>
+        </div>
+        <div class="class-info">
+            <h3 class="class-name">Wizard</h3>
+            <span class="class-role">Controller/Blaster</span>
+        </div>
+        <div class="class-rarity common">Common</div>
+    </div>
+
+    <div class="class-stats-grid">
+        <div class="stat-block">
+            <span class="stat-label">Hit Points</span>
+            <span class="stat-value">6 + Con modifier</span>
+        </div>
+        <div class="stat-block">
+            <span class="stat-label">Key Ability</span>
+            <span class="stat-value">Intelligence</span>
+        </div>
+        <div class="stat-block">
+            <span class="stat-label">Initial Proficiencies</span>
+            <span class="stat-value">Expert in spell attacks</span>
+        </div>
+        <div class="stat-block">
+            <span class="stat-label">Skills</span>
+            <span class="stat-value">2 + Int modifier</span>
+        </div>
+    </div>
+
+    <div class="class-description">
+        <p>
+            You are an eternal student of the arcane secrets of the universe, using your mastery of magic to cast powerful 
+            and devastating spells. You treat magic like a science, cross-referencing the latest texts on practical 
+            spellcasting and studying dusty tomes for new insights into magical theories.
+        </p>
+    </div>
+
+    @if (ShowDetails)
+    {
+        <div class="class-details-expanded">
+            <div class="spellcasting-info">
+                <h4>Spellcasting</h4>
+                <div class="spell-details">
+                    <div class="spell-stat">
+                        <span class="label">Spell Tradition:</span>
+                        <span class="value">Arcane</span>
+                    </div>
+                    <div class="spell-stat">
+                        <span class="label">Spell Ability:</span>
+                        <span class="value">Intelligence</span>
+                    </div>
+                    <div class="spell-stat">
+                        <span class="label">Spell Slots per Day:</span>
+                        <span class="value">1st: 2, Cantrips: 5</span>
+                    </div>
+                    <div class="spell-stat">
+                        <span class="label">Spells in Spellbook:</span>
+                        <span class="value">8 cantrips, 2 1st-level</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="school-selection">
+                <h4>Arcane Schools</h4>
+                <div class="schools-grid">
+                    <div class="school-option">
+                        <h5>School of Evocation</h5>
+                        <p>Focus on energy, force, and destruction</p>
+                        <div class="school-benefit">+1 spell slot per level for evocation spells</div>
+                    </div>
+                    <div class="school-option">
+                        <h5>School of Illusion</h5>
+                        <p>Master of deception and misdirection</p>
+                        <div class="school-benefit">+1 spell slot per level for illusion spells</div>
+                    </div>
+                    <div class="school-option">
+                        <h5>Universalist</h5>
+                        <p>Study all schools of magic equally</p>
+                        <div class="school-benefit">Additional flexibility with spell preparation</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="class-abilities">
+                <h4>Class Features</h4>
+                <ul>
+                    <li><strong>Spellbook:</strong> Contains your collection of arcane spells</li>
+                    <li><strong>Arcane Spellcasting:</strong> Cast spells using spell slots</li>
+                    <li><strong>Cantrips:</strong> Cast unlimited simple spells</li>
+                    <li><strong>Wizard Feat:</strong> Choose a 1st-level wizard feat</li>
+                </ul>
+            </div>
+
+            <div class="progression-preview">
+                <h4>Level Progression Preview</h4>
+                <div class="progression-levels">
+                    <div class="level-marker">
+                        <span class="level">1st</span>
+                        <span class="feature">Arcane spellcasting, spellbook, wizard feat</span>
+                    </div>
+                    <div class="level-marker">
+                        <span class="level">2nd</span>
+                        <span class="feature">Wizard feat, skill feat</span>
+                    </div>
+                    <div class="level-marker">
+                        <span class="level">3rd</span>
+                        <span class="feature">2nd-level spells, general feat, skill increase</span>
+                    </div>
+                    <div class="level-marker">
+                        <span class="level">5th</span>
+                        <span class="feature">3rd-level spells, lightning reflexes</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sample-builds">
+                <h4>Sample Builds</h4>
+                <div class="build-options">
+                    <div class="build-option">
+                        <h5>Evoker Blaster</h5>
+                        <p>Specialize in destructive evocation spells</p>
+                        <div class="build-stats">
+                            <span class="build-stat">Int 18, Dex 14, Con 14</span>
+                        </div>
+                    </div>
+                    <div class="build-option">
+                        <h5>Controller</h5>
+                        <p>Focus on battlefield control and utility</p>
+                        <div class="build-stats">
+                            <span class="build-stat">Int 18, Wis 14, Con 14</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="class-actions">
+        <button class="btn btn-primary" @onclick="SelectClass" disabled="@IsSelected">
+            @if (IsSelected)
+            {
+                <i class="fas fa-check"></i> <text>Selected</text>
+            }
+            else
+            {
+                <i class="fas fa-plus"></i> <text>Select Wizard</text>
+            }
+        </button>
+        <button class="btn btn-secondary" @onclick="ToggleDetails">
+            @if (ShowDetails)
+            {
+                <i class="fas fa-chevron-up"></i> <text>Less Details</text>
+            }
+            else
+            {
+                <i class="fas fa-chevron-down"></i> <text>More Details</text>
+            }
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool IsSelected { get; set; }
+    [Parameter] public bool ShowDetails { get; set; }
+    [Parameter] public EventCallback OnClassSelected { get; set; }
+    [Parameter] public CharacterBuilder? Character { get; set; }
+
+    private async Task SelectClass()
+    {
+        if (Character != null)
+        {
+            Character.SelectedClass = GetClassDefinition();
+        }
+
+        await OnClassSelected.InvokeAsync();
+    }
+
+    private void ToggleDetails()
+    {
+        ShowDetails = !ShowDetails;
+    }
+
+    public static PathfinderClass GetClassDefinition()
+    {
+        return new PathfinderClass
+        {
+            Id = "wizard",
+            Name = "Wizard",
+            Description = "You are an eternal student of the arcane secrets of the universe, using your mastery of magic to cast powerful and devastating spells.",
+            HitPoints = 6,
+            KeyAbilities = new List<AbilityScore> { AbilityScore.Intelligence },
+            SkillPoints = 2,
+            Source = "Core Rulebook",
+            Rarity = "Common",
+            Traits = new List<string>(),
+            IsSpellcaster = true,
+            SpellcastingTradition = "Arcane",
+            SpellcastingAbility = "Intelligence",
+            InitialProficiencies = new ClassProficiencies
+            {
+                Perception = ProficiencyLevel.Trained,
+                FortitudeSave = ProficiencyLevel.Trained,
+                ReflexSave = ProficiencyLevel.Trained,
+                WillSave = ProficiencyLevel.Expert,
+                Skills = new Dictionary<string, ProficiencyLevel>
+                {
+                    ["Arcana"] = ProficiencyLevel.Trained,
+                    ["Crafting"] = ProficiencyLevel.Untrained
+                },
+                Weapons = new Dictionary<string, ProficiencyLevel>
+                {
+                    ["Simple"] = ProficiencyLevel.Trained,
+                    ["Martial"] = ProficiencyLevel.Untrained,
+                    ["Advanced"] = ProficiencyLevel.Untrained
+                },
+                Armor = new Dictionary<string, ProficiencyLevel>
+                {
+                    ["Unarmored"] = ProficiencyLevel.Trained,
+                    ["Light"] = ProficiencyLevel.Untrained,
+                    ["Medium"] = ProficiencyLevel.Untrained,
+                    ["Heavy"] = ProficiencyLevel.Untrained
+                },
+                SpellAttacks = ProficiencyLevel.Trained,
+                SpellDCs = ProficiencyLevel.Trained
+            }
+        };
+    }
+}

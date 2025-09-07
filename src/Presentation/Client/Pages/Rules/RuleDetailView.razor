@@ -1,0 +1,431 @@
+@using PathfinderCampaignManager.Domain.Entities.Rules
+
+<div class="rule-detail-view">
+    <!-- Rule Header -->
+    <div class="rule-detail-header">
+        <button class="btn-back" @onclick="HandleBackClick">
+            <i class="fas fa-arrow-left"></i>
+            <span>Back to Rules</span>
+        </button>
+        
+        <div class="rule-title-section">
+            <div class="rule-category-info">
+                <div class="category-badge">
+                    <i class="@Rule.Category.GetIconClass()"></i>
+                    <span>@Rule.Category.GetDisplayName()</span>
+                </div>
+                <div class="content-type-badge @GetContentTypeCssClass()">
+                    @Rule.ContentType
+                </div>
+            </div>
+            
+            <h1 class="rule-title">@Rule.Name</h1>
+            
+            @if (Rule.Traits.Any() || Rule.Tags.Any())
+            {
+                <div class="rule-badges">
+                    @if (Rule.Traits.Any())
+                    {
+                        <div class="traits-section">
+                            <strong>Traits:</strong>
+                            @foreach (var trait in Rule.Traits)
+                            {
+                                <span class="trait-badge">@trait</span>
+                            }
+                        </div>
+                    }
+                    
+                    @if (Rule.Tags.Any())
+                    {
+                        <div class="tags-section">
+                            <strong>Tags:</strong>
+                            @foreach (var tag in Rule.Tags)
+                            {
+                                <span class="tag-badge">@tag</span>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+    
+    <!-- Rule Content -->
+    <div class="rule-content">
+        <!-- Summary -->
+        <div class="rule-summary-section">
+            <h2>Summary</h2>
+            <p class="rule-summary">@Rule.Summary</p>
+        </div>
+        
+        <!-- Detailed Content -->
+        @if (!string.IsNullOrEmpty(Rule.DetailsMarkdown))
+        {
+            <div class="rule-details-section">
+                <h2>Details</h2>
+                <div class="rule-details">
+                    @((MarkupString)ConvertMarkdownToHtml(Rule.DetailsMarkdown))
+                </div>
+            </div>
+        }
+        
+        <!-- Table Content -->
+        @if (Table != null)
+        {
+            <div class="rule-table-section">
+                <h2>@Table.Caption</h2>
+                <div class="table-container">
+                    <table class="rule-table">
+                        <thead>
+                            <tr>
+                                @foreach (var column in Table.Columns)
+                                {
+                                    <th>@column</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in Table.Rows)
+                            {
+                                <tr>
+                                    @foreach (var cell in row)
+                                    {
+                                        <td>@((MarkupString)ConvertMarkdownToHtml(cell))</td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+        
+        <!-- Formula Content -->
+        @if (Formula != null)
+        {
+            <div class="rule-formula-section">
+                <h2>Formula</h2>
+                <div class="formula-container">
+                    <div class="formula-expression">
+                        <code>@Formula.Expression</code>
+                    </div>
+                    <div class="formula-description">
+                        <p>@Formula.HumanReadable</p>
+                    </div>
+                </div>
+            </div>
+        }
+        
+        <!-- References -->
+        @if (Rule.References.Any())
+        {
+            <div class="rule-references-section">
+                <h2>References</h2>
+                <ul class="reference-list">
+                    @foreach (var reference in Rule.References)
+                    {
+                        <li>@reference</li>
+                    }
+                </ul>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+.rule-detail-view {
+    max-width: 800px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.rule-detail-header {
+    background: var(--surface-background);
+    border-bottom: 1px solid var(--border-color);
+    padding: 2rem;
+}
+
+.btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: none;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+}
+
+.btn-back:hover {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+}
+
+.rule-category-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.category-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--primary-color-10);
+    color: var(--primary-color);
+    border-radius: 0.5rem;
+    font-weight: 500;
+}
+
+.content-type-badge {
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.375rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.content-type-badge.article {
+    background: var(--success-color-10);
+    color: var(--success-color);
+}
+
+.content-type-badge.table {
+    background: var(--info-color-10);
+    color: var(--info-color);
+}
+
+.content-type-badge.formula {
+    background: var(--warning-color-10);
+    color: var(--warning-color);
+}
+
+.content-type-badge.glossary {
+    background: var(--secondary-color-10);
+    color: var(--secondary-color);
+}
+
+.content-type-badge.example {
+    background: var(--accent-color-10);
+    color: var(--accent-color);
+}
+
+.rule-title {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+    margin-bottom: 1rem;
+}
+
+.rule-badges {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.traits-section,
+.tags-section {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.traits-section strong,
+.tags-section strong {
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.trait-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    background: var(--primary-color-10);
+    color: var(--primary-color);
+    border-radius: 0.25rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.tag-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    background: var(--surface-background);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 0.25rem;
+    font-size: 0.8rem;
+}
+
+.rule-content {
+    padding: 2rem;
+}
+
+.rule-content h2 {
+    color: var(--text-primary);
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0 0 1rem 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.rule-summary-section,
+.rule-details-section,
+.rule-table-section,
+.rule-formula-section,
+.rule-references-section {
+    margin-bottom: 2.5rem;
+}
+
+.rule-summary {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.rule-details {
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+.rule-details h3 {
+    color: var(--text-primary);
+    font-size: 1.25rem;
+    margin: 1.5rem 0 0.75rem 0;
+}
+
+.rule-details h4 {
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    margin: 1.25rem 0 0.5rem 0;
+}
+
+.rule-details p {
+    margin: 0 0 1rem 0;
+}
+
+.rule-details ul,
+.rule-details ol {
+    margin: 0 0 1rem 1.5rem;
+}
+
+.rule-details li {
+    margin-bottom: 0.5rem;
+}
+
+.table-container {
+    overflow-x: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    background: white;
+}
+
+.rule-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.rule-table th {
+    background: var(--surface-background);
+    color: var(--text-primary);
+    font-weight: 600;
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.rule-table td {
+    padding: 0.875rem 1rem;
+    border-bottom: 1px solid var(--border-color-light);
+    vertical-align: top;
+}
+
+.rule-table tr:last-child td {
+    border-bottom: none;
+}
+
+.rule-table tr:nth-child(even) {
+    background: var(--surface-background);
+}
+
+.formula-container {
+    background: var(--surface-background);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+}
+
+.formula-expression {
+    margin-bottom: 1rem;
+}
+
+.formula-expression code {
+    display: block;
+    background: var(--code-background, #f8f9fa);
+    border: 1px solid var(--border-color-light);
+    border-radius: 0.375rem;
+    padding: 1rem;
+    font-family: 'Courier New', monospace;
+    font-size: 1rem;
+    color: var(--text-primary);
+    word-break: break-all;
+}
+
+.formula-description p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.reference-list {
+    margin: 0;
+    padding-left: 1.5rem;
+}
+
+.reference-list li {
+    margin-bottom: 0.5rem;
+    color: var(--text-secondary);
+}
+
+/* Responsive Design */
+@@media (max-width: 768px) {
+    .rule-detail-header {
+        padding: 1.5rem;
+    }
+    
+    .rule-content {
+        padding: 1.5rem;
+    }
+    
+    .rule-title {
+        font-size: 1.75rem;
+    }
+    
+    .rule-badges {
+        gap: 0.5rem;
+    }
+    
+    .traits-section,
+    .tags-section {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+</style>

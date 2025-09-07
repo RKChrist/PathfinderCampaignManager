@@ -1,0 +1,449 @@
+// Pathfinder Campaign Manager - SCSS Mixins
+@import 'variables';
+
+// Layout Mixins
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@mixin flex-column {
+  display: flex;
+  flex-direction: column;
+}
+
+@mixin grid-auto-fit($min-width: 280px) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax($min-width, 1fr));
+  gap: $spacing-lg;
+}
+
+// Typography Mixins
+@mixin heading-1 {
+  font-size: 2.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: $text-primary;
+}
+
+@mixin heading-2 {
+  font-size: 1.875rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: $text-primary;
+}
+
+@mixin heading-3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: $text-primary;
+}
+
+@mixin body-large {
+  font-size: 1.125rem;
+  line-height: 1.6;
+  color: $text-primary;
+}
+
+@mixin body-normal {
+  font-size: 1rem;
+  line-height: 1.5;
+  color: $text-primary;
+}
+
+@mixin body-small {
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: $text-secondary;
+}
+
+@mixin text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@mixin text-clamp($lines: 2) {
+  display: -webkit-box;
+  -webkit-line-clamp: $lines;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+// Component Mixins
+@mixin tooltip($position: 'top') {
+  position: relative;
+  cursor: help;
+
+  &::before,
+  &::after {
+    position: absolute;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: all $transition-normal;
+  }
+
+  &::before {
+    content: attr(data-tooltip);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: $spacing-xs $spacing-sm;
+    border-radius: $radius-sm;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    z-index: var(--z-tooltip);
+  }
+
+  &::after {
+    content: '';
+    width: 0;
+    height: 0;
+    border: 4px solid transparent;
+  }
+
+  @if $position == 'top' {
+    &::before {
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    &::after {
+      bottom: calc(100% + 4px);
+      left: 50%;
+      transform: translateX(-50%);
+      border-top-color: rgba(0, 0, 0, 0.9);
+    }
+  }
+
+  &:hover {
+    &::before,
+    &::after {
+      opacity: 1;
+      visibility: visible;
+    }
+  }
+}
+
+@mixin loading-spinner($size: 20px, $color: $primary-color) {
+  width: $size;
+  height: $size;
+  border: 2px solid $border-color;
+  border-top: 2px solid $color;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+}
+
+@mixin skeleton-loading {
+  background: linear-gradient(90deg, $background-secondary 25%, $background-tertiary 50%, $background-secondary 75%);
+  background-size: 200% 100%;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+
+  @keyframes skeleton-pulse {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+}
+
+// Pathfinder Specific Mixins
+@mixin class-badge($class-name) {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-xs;
+  padding: $spacing-xs $spacing-sm;
+  border-radius: $radius-full;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  
+  $color: map-get($class-colors, $class-name);
+  background: rgba($color, 0.1);
+  color: $color;
+  border: 1px solid rgba($color, 0.2);
+
+  .icon {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+@mixin ancestry-card {
+  @include card;
+  padding: $spacing-lg;
+  transition: all $transition-normal;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: $shadow-lg;
+  }
+
+  .ancestry-header {
+    @include flex-between;
+    margin-bottom: $spacing-md;
+
+    .ancestry-name {
+      @include heading-3;
+      margin: 0;
+    }
+
+    .ancestry-traits {
+      display: flex;
+      gap: $spacing-xs;
+
+      .trait {
+        padding: 2px $spacing-xs;
+        background: $background-tertiary;
+        border-radius: $radius-sm;
+        font-size: 0.75rem;
+        color: $text-secondary;
+      }
+    }
+  }
+
+  .ancestry-description {
+    @include body-small;
+    @include text-clamp(3);
+    margin-bottom: $spacing-md;
+  }
+
+  .ancestry-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: $spacing-sm;
+
+    .stat {
+      text-align: center;
+      padding: $spacing-sm;
+      background: $background-secondary;
+      border-radius: $radius-sm;
+
+      .stat-label {
+        @include body-small;
+        margin: 0;
+        color: $text-muted;
+      }
+
+      .stat-value {
+        font-weight: 600;
+        color: $text-primary;
+      }
+    }
+  }
+}
+
+@mixin feat-card {
+  @include card;
+  padding: $spacing-md;
+  margin-bottom: $spacing-sm;
+
+  .feat-header {
+    @include flex-between;
+    margin-bottom: $spacing-sm;
+
+    .feat-title {
+      @include body-normal;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .feat-level {
+      background: $primary-color;
+      color: white;
+      padding: $spacing-xs $spacing-sm;
+      border-radius: $radius-full;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+  }
+
+  .feat-traits {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-xs;
+    margin-bottom: $spacing-sm;
+
+    .trait {
+      padding: 2px $spacing-xs;
+      background: $background-tertiary;
+      border-radius: $radius-sm;
+      font-size: 0.75rem;
+      color: $text-secondary;
+      text-transform: uppercase;
+    }
+  }
+
+  .feat-description {
+    @include body-small;
+    @include text-clamp(3);
+  }
+
+  &.feat-selected {
+    border-color: $primary-color;
+    background: rgba(var(--primary-color-rgb), 0.05);
+  }
+}
+
+@mixin spell-card {
+  @include card;
+  padding: $spacing-md;
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    border-radius: $radius-sm 0 0 $radius-sm;
+  }
+
+  &.spell-cantrip::before { background: $text-muted; }
+  &.spell-level-1::before { background: #fbbf24; }
+  &.spell-level-2::before { background: #f97316; }
+  &.spell-level-3::before { background: #ef4444; }
+  &.spell-level-4::before { background: #ec4899; }
+  &.spell-level-5::before { background: #8b5cf6; }
+  &.spell-level-6::before { background: #6366f1; }
+  &.spell-level-7::before { background: #0ea5e9; }
+  &.spell-level-8::before { background: #059669; }
+  &.spell-level-9::before { background: #dc2626; }
+
+  .spell-header {
+    @include flex-between;
+    margin-bottom: $spacing-sm;
+
+    .spell-name {
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .spell-level {
+      font-size: 0.875rem;
+      color: $text-secondary;
+    }
+  }
+
+  .spell-school {
+    @include body-small;
+    color: $text-secondary;
+    margin-bottom: $spacing-sm;
+    text-transform: capitalize;
+  }
+
+  .spell-description {
+    @include body-small;
+    @include text-clamp(3);
+  }
+}
+
+@mixin equipment-card {
+  @include card;
+  padding: $spacing-md;
+
+  .equipment-header {
+    @include flex-between;
+    margin-bottom: $spacing-sm;
+
+    .equipment-name {
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .equipment-price {
+      font-weight: 600;
+      color: $warning-color;
+    }
+  }
+
+  .equipment-stats {
+    display: flex;
+    gap: $spacing-md;
+    margin-bottom: $spacing-sm;
+
+    .stat {
+      @include body-small;
+      color: $text-secondary;
+
+      .stat-value {
+        font-weight: 600;
+        color: $text-primary;
+      }
+    }
+  }
+
+  .equipment-traits {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-xs;
+    margin-bottom: $spacing-sm;
+
+    .trait {
+      padding: 2px $spacing-xs;
+      background: $background-tertiary;
+      border-radius: $radius-sm;
+      font-size: 0.75rem;
+      color: $text-secondary;
+    }
+  }
+
+  .equipment-description {
+    @include body-small;
+    @include text-clamp(2);
+  }
+}
+
+// Animation Mixins
+@mixin slide-in-from-top($distance: 20px) {
+  animation: slideInFromTop $transition-slow ease-out;
+
+  @keyframes slideInFromTop {
+    from {
+      opacity: 0;
+      transform: translateY(-#{$distance});
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+@mixin fade-in($duration: $transition-normal) {
+  animation: fadeIn $duration ease-out;
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+}
+
+@mixin scale-in($duration: $transition-normal) {
+  animation: scaleIn $duration ease-out;
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+}

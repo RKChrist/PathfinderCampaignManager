@@ -1,0 +1,774 @@
+@page "/join"
+@page "/join/{joinToken:guid}"
+@using PathfinderCampaignManager.Application.Campaigns.Commands
+@using PathfinderCampaignManager.Presentation.Client.Components.Auth
+@using System.ComponentModel.DataAnnotations
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Join Campaign</PageTitle>
+
+<AuthGuard CustomMessage="You must be logged in to join campaigns." RedirectToLogin="true">
+
+<div class="join-campaign-page">
+    <div class="join-container">
+        <div class="join-card">
+            @if (isLoading)
+            {
+                <div class="loading-state">
+                    <div class="spinner"></div>
+                    <h3>Validating invite...</h3>
+                </div>
+            }
+            else if (campaignInfo != null)
+            {
+                <!-- Valid Campaign Info -->
+                <div class="campaign-preview">
+                    <div class="campaign-icon">
+                        <i class="fas fa-dungeon"></i>
+                    </div>
+                    <div class="campaign-details">
+                        <h2>@campaignInfo.Name</h2>
+                        @if (!string.IsNullOrEmpty(campaignInfo.Description))
+                        {
+                            <p class="campaign-description">@campaignInfo.Description</p>
+                        }
+                        <div class="campaign-meta">
+                            <div class="meta-item">
+                                <i class="fas fa-user-crown"></i>
+                                <span>DM: @campaignInfo.DMName</span>
+                            </div>
+                            <div class="meta-item">
+                                <i class="fas fa-users"></i>
+                                <span>@campaignInfo.MemberCount @(campaignInfo.MemberCount == 1 ? "member" : "members")</span>
+                            </div>
+                            @if (campaignInfo.LastActivity.HasValue)
+                            {
+                                <div class="meta-item">
+                                    <i class="fas fa-clock"></i>
+                                    <span>Active @GetTimeAgo(campaignInfo.LastActivity.Value)</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                @if (hasJoined)
+                {
+                    <!-- Already Joined -->
+                    <div class="join-success">
+                        <div class="success-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <h3>Welcome to @campaignInfo.Name!</h3>
+                        <p>You've successfully joined as <strong>@joinResult?.Alias</strong></p>
+                        <div class="success-actions">
+                            <button class="btn btn-primary" @onclick="GoToCampaign">
+                                <i class="fas fa-play"></i>
+                                Enter Campaign
+                            </button>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <!-- Join Form -->
+                    <div class="join-form">
+                        <h3>Join this campaign</h3>
+                        <p>Choose an alias to display in this campaign. Your real name will remain private.</p>
+
+                        <EditForm Model="@joinModel" OnValidSubmit="@HandleJoin">
+                            <DataAnnotationsValidator />
+
+                            <div class="form-group">
+                                <label for="alias" class="form-label">Display Name</label>
+                                <InputText id="alias" 
+                                          @bind-Value="joinModel.Alias" 
+                                          class="form-control" 
+                                          placeholder="Enter your display name"
+                                          maxlength="50" />
+                                <ValidationMessage For="@(() => joinModel.Alias)" class="text-danger" />
+                                @if (aliasError != null)
+                                {
+                                    <div class="text-danger">@aliasError</div>
+                                }
+                                <small class="form-text text-muted">
+                                    This name will be visible to other players and the DM
+                                </small>
+                            </div>
+
+                            <div class="join-actions">
+                                <button type="submit" 
+                                       class="btn btn-primary" 
+                                       disabled="@isSubmitting">
+                                    @if (isSubmitting)
+                                    {
+                                        <i class="fas fa-spinner fa-spin"></i>
+                                        <span>Joining...</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="fas fa-sign-in-alt"></i>
+                                        <span>Join Campaign</span>
+                                    }
+                                </button>
+                                <button type="button" 
+                                       class="btn btn-secondary" 
+                                       @onclick="Cancel">
+                                    Cancel
+                                </button>
+                            </div>
+                        </EditForm>
+                    </div>
+                }
+            }
+            else if (hasError)
+            {
+                <!-- Error State -->
+                <div class="error-state">
+                    <div class="error-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <h3>@errorTitle</h3>
+                    <p>@errorMessage</p>
+                    @if (showRetry)
+                    {
+                        <button class="btn btn-outline-primary" @onclick="RetryValidation">
+                            <i class="fas fa-redo"></i>
+                            Try Again
+                        </button>
+                    }
+                    <button class="btn btn-secondary" @onclick="GoHome">
+                        <i class="fas fa-home"></i>
+                        Go Home
+                    </button>
+                </div>
+            }
+            else
+            {
+                <!-- Manual Token Entry -->
+                <div class="token-entry">
+                    <div class="entry-header">
+                        <div class="entry-icon">
+                            <i class="fas fa-key"></i>
+                        </div>
+                        <h2>Join a Campaign</h2>
+                        <p>Enter the campaign join code you received from your DM</p>
+                    </div>
+
+                    <EditForm Model="@tokenModel" OnValidSubmit="@HandleTokenSubmit">
+                        <DataAnnotationsValidator />
+
+                        <div class="form-group">
+                            <label for="token" class="form-label">Campaign Join Code</label>
+                            <InputText id="token" 
+                                      @bind-Value="tokenModel.Token" 
+                                      class="form-control token-input" 
+                                      placeholder="Enter your join code"/>
+                            <ValidationMessage For="@(() => tokenModel.Token)" class="text-danger" />
+                            <small class="form-text text-muted">
+                                This code was provided by your DM
+                            </small>
+                        </div>
+
+                        <button type="submit" 
+                               class="btn btn-primary" 
+                               disabled="@isValidating">
+                            @if (isValidating)
+                            {
+                                <i class="fas fa-spinner fa-spin"></i>
+                                <span>Validating...</span>
+                            }
+                            else
+                            {
+                                <i class="fas fa-search"></i>
+                                <span>Find Campaign</span>
+                            }
+                        </button>
+                    </EditForm>
+                </div>
+            }
+        </div>
+
+        <!-- Help Section -->
+        <div class="help-section">
+            <details>
+                <summary>
+                    <i class="fas fa-question-circle"></i>
+                    Need help joining?
+                </summary>
+                <div class="help-content">
+                    <h4>How to join a campaign:</h4>
+                    <ol>
+                        <li>Get a join code or link from your DM</li>
+                        <li>Enter the code or click the link</li>
+                        <li>Choose a display name for the campaign</li>
+                        <li>Click "Join Campaign" to get started</li>
+                    </ol>
+                    
+                    <h4>Troubleshooting:</h4>
+                    <ul>
+                        <li><strong>Invalid code:</strong> Double-check the code with your DM</li>
+                        <li><strong>Expired link:</strong> Ask your DM for a new invite</li>
+                        <li><strong>Name taken:</strong> Choose a different display name</li>
+                    </ul>
+                </div>
+            </details>
+        </div>
+    </div>
+</div>
+
+</AuthGuard>
+
+<style>
+.join-campaign-page {
+    min-height: 100vh;
+    background: linear-gradient(135deg, var(--primary-color-10) 0%, var(--surface-background) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+.join-container {
+    width: 100%;
+    max-width: 500px;
+}
+
+.join-card {
+    background: white;
+    border-radius: 1rem;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.loading-state {
+    padding: 4rem 2rem;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.loading-state .spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid var(--border-color);
+    border-top: 4px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 2rem;
+}
+
+.campaign-preview {
+    display: flex;
+    padding: 2rem;
+    gap: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.campaign-icon {
+    width: 64px;
+    height: 64px;
+    background: var(--primary-color);
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.campaign-details h2 {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-primary);
+    font-size: 1.5rem;
+}
+
+.campaign-description {
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    line-height: 1.5;
+}
+
+.campaign-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.meta-item i {
+    width: 16px;
+    color: var(--primary-color);
+}
+
+.join-form {
+    padding: 2rem;
+}
+
+.join-form h3 {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-primary);
+}
+
+.join-form > p {
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+}
+
+.form-group {
+    margin-bottom: 2rem;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid var(--border-color);
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px var(--primary-color-20);
+}
+
+.token-input {
+    font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.join-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.join-success {
+    padding: 3rem 2rem;
+    text-align: center;
+}
+
+.success-icon {
+    width: 80px;
+    height: 80px;
+    background: var(--success-color-20);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    color: var(--success-color);
+    font-size: 2rem;
+}
+
+.join-success h3 {
+    margin: 0 0 1rem 0;
+    color: var(--text-primary);
+}
+
+.join-success p {
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+}
+
+.error-state {
+    padding: 3rem 2rem;
+    text-align: center;
+}
+
+.error-icon {
+    width: 80px;
+    height: 80px;
+    background: var(--error-color-20);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    color: var(--error-color);
+    font-size: 2rem;
+}
+
+.error-state h3 {
+    margin: 0 0 1rem 0;
+    color: var(--text-primary);
+}
+
+.error-state p {
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+}
+
+.token-entry {
+    padding: 3rem 2rem;
+}
+
+.entry-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.entry-icon {
+    width: 80px;
+    height: 80px;
+    background: var(--primary-color-20);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    color: var(--primary-color);
+    font-size: 2rem;
+}
+
+.entry-header h2 {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-primary);
+}
+
+.entry-header p {
+    color: var(--text-secondary);
+}
+
+.help-section {
+    margin-top: 2rem;
+    background: white;
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.help-section details {
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+}
+
+.help-section summary {
+    padding: 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    background: var(--surface-background);
+    transition: background-color 0.2s ease;
+}
+
+.help-section summary:hover {
+    background: var(--border-color);
+}
+
+.help-content {
+    padding: 1.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.help-content h4 {
+    margin: 0 0 1rem 0;
+    color: var(--text-primary);
+}
+
+.help-content ol,
+.help-content ul {
+    margin-bottom: 1.5rem;
+    padding-left: 1.5rem;
+}
+
+.help-content li {
+    margin-bottom: 0.5rem;
+    color: var(--text-secondary);
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background: var(--primary-color);
+    color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: var(--primary-color-dark);
+    transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-secondary {
+    background: var(--surface-background);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    background: var(--border-color);
+    color: var(--text-primary);
+}
+
+.btn-outline-primary {
+    background: none;
+    color: var(--primary-color);
+    border: 2px solid var(--primary-color);
+}
+
+.btn-outline-primary:hover {
+    background: var(--primary-color);
+    color: white;
+}
+
+/* CSS animations disabled for compilation */
+
+/* CSS responsive rules disabled for compilation */
+</style>
+
+@code {
+    [Parameter] public Guid? JoinToken { get; set; }
+
+    private ElementReference aliasInputRef;
+    private ElementReference tokenInputRef;
+
+    private bool isLoading = true;
+    private bool isValidating = false;
+    private bool isSubmitting = false;
+    private bool hasError = false;
+    private bool hasJoined = false;
+    private bool showRetry = false;
+
+    private string errorTitle = "";
+    private string errorMessage = "";
+    private string? aliasError;
+
+    private CampaignInfo? campaignInfo;
+    private CampaignMemberDto? joinResult;
+
+    private JoinModel joinModel = new();
+    private TokenModel tokenModel = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (JoinToken.HasValue)
+        {
+            await ValidateCampaign(JoinToken.Value);
+        }
+        else
+        {
+            isLoading = false;
+            await Task.Delay(100); // Allow render
+            await tokenInputRef.FocusAsync();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && campaignInfo != null && !hasJoined)
+        {
+            await aliasInputRef.FocusAsync();
+        }
+    }
+
+    private async Task ValidateCampaign(Guid token)
+    {
+        isLoading = true;
+        hasError = false;
+
+        try
+        {
+            var response = await Http.GetAsync($"api/campaigns/join/{token}/info");
+            
+            if (response.IsSuccessStatusCode)
+            {
+                campaignInfo = await response.Content.ReadFromJsonAsync<CampaignInfo>();
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                ShowError("Invalid Join Link", "This join link is not valid or may have expired.", true);
+            }
+            else
+            {
+                ShowError("Connection Error", "Unable to validate the join link. Please check your connection.", true);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError("Network Error", "Unable to connect to the server. Please try again.", true);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleTokenSubmit()
+    {
+        if (string.IsNullOrWhiteSpace(tokenModel.Token))
+            return;
+
+        if (!Guid.TryParse(tokenModel.Token, out var token))
+        {
+            ShowError("Invalid Format", "Join codes must be in the correct format. Please check with your DM.", false);
+            return;
+        }
+
+        await ValidateCampaign(token);
+    }
+
+    private async Task HandleJoin()
+    {
+        if (campaignInfo == null || JoinToken == null)
+            return;
+
+        isSubmitting = true;
+        aliasError = null;
+
+        try
+        {
+            var request = new JoinCampaignRequest
+            {
+                JoinToken = JoinToken.Value,
+                UserId = GetCurrentUserId(), // In real app, get from auth
+                Alias = joinModel.Alias?.Trim() ?? ""
+            };
+
+            var response = await Http.PostAsJsonAsync($"api/campaigns/join/{JoinToken}", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                joinResult = await response.Content.ReadFromJsonAsync<CampaignMemberDto>();
+                hasJoined = true;
+                
+                // Show success notification
+                await JSRuntime.InvokeVoidAsync("showToast", "Successfully joined campaign!");
+            }
+            else
+            {
+                var errorResponse = await response.Content.ReadAsStringAsync();
+                aliasError = errorResponse;
+            }
+        }
+        catch (Exception ex)
+        {
+            aliasError = "Unable to join campaign. Please try again.";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void ShowError(string title, string message, bool canRetry)
+    {
+        hasError = true;
+        errorTitle = title;
+        errorMessage = message;
+        showRetry = canRetry;
+    }
+
+    private async Task RetryValidation()
+    {
+        if (JoinToken.HasValue)
+        {
+            await ValidateCampaign(JoinToken.Value);
+        }
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/");
+    }
+
+    private void GoHome()
+    {
+        Navigation.NavigateTo("/");
+    }
+
+    private void GoToCampaign()
+    {
+        if (joinResult != null)
+        {
+            Navigation.NavigateTo($"/campaigns/{joinResult.CampaignId}");
+        }
+    }
+
+    private string GetTimeAgo(DateTime dateTime)
+    {
+        var timeSpan = DateTime.UtcNow - dateTime;
+        
+        if (timeSpan.TotalDays > 30)
+            return $"{(int)(timeSpan.TotalDays / 30)} month(s) ago";
+        if (timeSpan.TotalDays > 1)
+            return $"{(int)timeSpan.TotalDays} day(s) ago";
+        if (timeSpan.TotalHours > 1)
+            return $"{(int)timeSpan.TotalHours} hour(s) ago";
+        if (timeSpan.TotalMinutes > 1)
+            return $"{(int)timeSpan.TotalMinutes} minute(s) ago";
+        
+        return "just now";
+    }
+
+    private Guid GetCurrentUserId()
+    {
+        // In a real implementation, get from authentication context
+        return Guid.NewGuid();
+    }
+
+    public class JoinModel
+    {
+        [Required(ErrorMessage = "Display name is required")]
+        [StringLength(50, ErrorMessage = "Display name must be 50 characters or less")]
+        public string? Alias { get; set; }
+    }
+
+    public class TokenModel
+    {
+        [Required(ErrorMessage = "Join code is required")]
+        public string? Token { get; set; }
+    }
+
+    public class CampaignInfo
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string DMName { get; set; } = string.Empty;
+        public int MemberCount { get; set; }
+        public DateTime? LastActivity { get; set; }
+    }
+
+    public class JoinCampaignRequest
+    {
+        public Guid JoinToken { get; set; }
+        public Guid UserId { get; set; }
+        public string Alias { get; set; } = string.Empty;
+    }
+}

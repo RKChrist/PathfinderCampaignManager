@@ -1,0 +1,197 @@
+@using PathfinderCampaignManager.Application.CharacterCreation.Models
+@using PathfinderCampaignManager.Domain.Enums
+
+<div class="pf2e-feat-component power-attack-feat">
+    <div class="feat-header">
+        <div class="feat-icon">
+            <i class="fas fa-fist-raised"></i>
+        </div>
+        <div class="feat-info">
+            <h4 class="feat-name">Power Attack</h4>
+            <div class="feat-meta">
+                <span class="feat-level">Level 1</span>
+                <span class="feat-type">Fighter</span>
+                <span class="feat-rarity common">Common</span>
+            </div>
+        </div>
+        <div class="feat-actions">
+            <span class="action-cost">
+                <i class="action-icon two-actions"></i>
+            </span>
+        </div>
+    </div>
+
+    <div class="feat-traits">
+        <span class="trait fighter">Fighter</span>
+        <span class="trait flourish">Flourish</span>
+    </div>
+
+    <div class="feat-description">
+        <p>
+            You unleash a particularly powerful attack that clobbers your foe but leaves you a bit unsteady. 
+            Make a melee Strike. This counts as two attacks when calculating your multiple attack penalty. 
+            If this Strike hits, you deal an extra die of weapon damage. If you're at least 10th level, increase this to two extra dice, 
+            and if you're at least 18th level, increase it to three extra dice.
+        </p>
+    </div>
+
+    @if (ShowDetails)
+    {
+        <div class="feat-details-expanded">
+            <div class="feat-mechanics">
+                <h5>Mechanics</h5>
+                <ul>
+                    <li><strong>Action Cost:</strong> 2 actions</li>
+                    <li><strong>Multiple Attack Penalty:</strong> This counts as two attacks</li>
+                    <li><strong>Damage Bonus:</strong> +1 weapon damage die (scales with level)</li>
+                    <li><strong>Requirements:</strong> You're wielding a melee weapon</li>
+                </ul>
+            </div>
+
+            <div class="feat-scaling">
+                <h5>Level Scaling</h5>
+                <div class="scaling-levels">
+                    <div class="scaling-level">
+                        <span class="level">1st-9th</span>
+                        <span class="benefit">+1 weapon damage die</span>
+                    </div>
+                    <div class="scaling-level">
+                        <span class="level">10th-17th</span>
+                        <span class="benefit">+2 weapon damage dice</span>
+                    </div>
+                    <div class="scaling-level">
+                        <span class="level">18th+</span>
+                        <span class="benefit">+3 weapon damage dice</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="feat-tactics">
+                <h5>Tactical Usage</h5>
+                <ul>
+                    <li>Best used when you have advantage or high accuracy</li>
+                    <li>Consider positioning before using due to multiple attack penalty</li>
+                    <li>Excellent for finishing moves against wounded enemies</li>
+                    <li>Synergizes well with critical hit builds</li>
+                </ul>
+            </div>
+
+            <div class="feat-synergies">
+                <h5>Synergies</h5>
+                <div class="synergy-items">
+                    <div class="synergy-item">
+                        <span class="synergy-name">Sudden Charge</span>
+                        <span class="synergy-desc">Move and Power Attack in one turn</span>
+                    </div>
+                    <div class="synergy-item">
+                        <span class="synergy-name">True Strike</span>
+                        <span class="synergy-desc">Ensure the Power Attack hits</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="feat-actions-bar">
+        <button class="btn btn-primary btn-sm" @onclick="SelectFeat" disabled="@IsSelected">
+            @if (IsSelected)
+            {
+                <i class="fas fa-check"></i> <text>Selected</text>
+            }
+            else
+            {
+                <i class="fas fa-plus"></i> <text>Select</text>
+            }
+        </button>
+        <button class="btn btn-secondary btn-sm" @onclick="ToggleDetails">
+            @if (ShowDetails)
+            {
+                <i class="fas fa-chevron-up"></i>
+            }
+            else
+            {
+                <i class="fas fa-chevron-down"></i>
+            }
+        </button>
+        @if (ShowPrerequisites)
+        {
+            <button class="btn btn-info btn-sm" @onclick="ShowPrereqs">
+                <i class="fas fa-list"></i> Prerequisites
+            </button>
+        }
+    </div>
+
+    @if (ShowPrerequisites && ShowPrereqDetails)
+    {
+        <div class="feat-prerequisites">
+            <h5>Prerequisites</h5>
+            <ul>
+                <li>Fighter class or archetype that grants fighter feats</li>
+                <li>Must be able to make melee Strikes</li>
+            </ul>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public bool IsSelected { get; set; }
+    [Parameter] public bool ShowDetails { get; set; }
+    [Parameter] public bool ShowPrerequisites { get; set; } = true;
+    [Parameter] public EventCallback OnFeatSelected { get; set; }
+    [Parameter] public CharacterBuilder? Character { get; set; }
+
+    private bool ShowPrereqDetails { get; set; }
+
+    private async Task SelectFeat()
+    {
+        if (Character != null)
+        {
+            var feat = GetFeatDefinition();
+            // Add feat to character's feat list
+            if (Character.SelectedFeats == null)
+                Character.SelectedFeats = new List<PathfinderFeat>();
+            
+            if (!Character.SelectedFeats.Any(f => f.Id == feat.Id))
+            {
+                Character.SelectedFeats.Add(feat);
+            }
+        }
+
+        await OnFeatSelected.InvokeAsync();
+    }
+
+    private void ToggleDetails()
+    {
+        ShowDetails = !ShowDetails;
+    }
+
+    private void ShowPrereqs()
+    {
+        ShowPrereqDetails = !ShowPrereqDetails;
+    }
+
+    public static PathfinderFeat GetFeatDefinition()
+    {
+        return new PathfinderFeat
+        {
+            Id = "power-attack",
+            Name = "Power Attack",
+            Description = "You unleash a particularly powerful attack that clobbers your foe but leaves you a bit unsteady.",
+            Level = 1,
+            FeatType = "Fighter",
+            ActionCost = 2,
+            Source = "Core Rulebook",
+            Rarity = "Common",
+            Traits = new List<string> { "Fighter", "Flourish" },
+            Prerequisites = new List<string> { "Fighter class" },
+            Benefits = new List<string> 
+            { 
+                "Make a melee Strike that deals an extra die of weapon damage",
+                "Scales with level: +2 dice at 10th, +3 dice at 18th"
+            },
+            Frequency = null,
+            Trigger = null,
+            Requirements = new List<string> { "You're wielding a melee weapon" }
+        };
+    }
+}

@@ -1,0 +1,368 @@
+@using PathfinderCampaignManager.Application.CharacterCreation.Models
+@using PathfinderCampaignManager.Domain.Enums
+
+<div class="pf2e-skill-component athletics-skill">
+    <div class="skill-header">
+        <div class="skill-icon">
+            <i class="fas fa-dumbbell"></i>
+        </div>
+        <div class="skill-info">
+            <h4 class="skill-name">Athletics</h4>
+            <div class="skill-meta">
+                <span class="key-ability">Strength</span>
+                <span class="skill-type">Physical</span>
+            </div>
+        </div>
+        <div class="skill-proficiency">
+            <select class="proficiency-selector" @bind="SelectedProficiency" @bind:after="UpdateProficiency">
+                <option value="@ProficiencyLevel.Untrained">Untrained</option>
+                <option value="@ProficiencyLevel.Trained">Trained</option>
+                <option value="@ProficiencyLevel.Expert">Expert</option>
+                <option value="@ProficiencyLevel.Master">Master</option>
+                <option value="@ProficiencyLevel.Legendary">Legendary</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="skill-bonus-display">
+        <span class="skill-bonus">@CalculateSkillBonus()</span>
+        <span class="bonus-breakdown">
+            (@GetBonusBreakdown())
+        </span>
+    </div>
+
+    <div class="skill-description">
+        <p>
+            Athletics allows you to perform deeds of physical prowess. When you use the Escape basic action, 
+            you can use your Athletics modifier instead of your unarmed attack modifier.
+        </p>
+    </div>
+
+    @if (ShowDetails)
+    {
+        <div class="skill-details-expanded">
+            <div class="skill-actions">
+                <h5>Skill Actions</h5>
+                <div class="actions-grid">
+                    <div class="skill-action">
+                        <div class="action-header">
+                            <span class="action-name">Climb</span>
+                            <span class="action-cost">
+                                <i class="action-icon move-action"></i>
+                            </span>
+                        </div>
+                        <p>Move up, down, or across an inclined surface.</p>
+                        <div class="action-dcs">
+                            <span class="dc">Untrained Wall DC 30</span>
+                            <span class="dc">Tree DC 15</span>
+                            <span class="dc">Rope DC 5</span>
+                        </div>
+                    </div>
+
+                    <div class="skill-action">
+                        <div class="action-header">
+                            <span class="action-name">Force Open</span>
+                            <span class="action-cost">
+                                <i class="action-icon single-action"></i>
+                            </span>
+                        </div>
+                        <p>Use brute force to open a door, window, container, or heavy gate.</p>
+                        <div class="action-dcs">
+                            <span class="dc">Simple Door DC 15</span>
+                            <span class="dc">Reinforced DC 20</span>
+                            <span class="dc">Barred DC 25</span>
+                        </div>
+                    </div>
+
+                    <div class="skill-action">
+                        <div class="action-header">
+                            <span class="action-name">Grapple</span>
+                            <span class="action-cost">
+                                <i class="action-icon single-action"></i>
+                            </span>
+                        </div>
+                        <p>You attempt to grab a creature or object.</p>
+                        <div class="action-dcs">
+                            <span class="dc">vs. Target's Fortitude DC</span>
+                        </div>
+                    </div>
+
+                    <div class="skill-action">
+                        <div class="action-header">
+                            <span class="action-name">High Jump</span>
+                            <span class="action-cost">
+                                <i class="action-icon two-actions"></i>
+                            </span>
+                        </div>
+                        <p>You Stride, then make a vertical leap.</p>
+                        <div class="action-dcs">
+                            <span class="dc">DC 30: 8+ feet</span>
+                            <span class="dc">DC 20: 5 feet</span>
+                            <span class="dc">DC 15: 3 feet</span>
+                        </div>
+                    </div>
+
+                    <div class="skill-action">
+                        <div class="action-header">
+                            <span class="action-name">Long Jump</span>
+                            <span class="action-cost">
+                                <i class="action-icon two-actions"></i>
+                            </span>
+                        </div>
+                        <p>You Stride, then make a horizontal leap.</p>
+                        <div class="action-dcs">
+                            <span class="dc">DC varies by distance</span>
+                        </div>
+                    </div>
+
+                    <div class="skill-action">
+                        <div class="action-header">
+                            <span class="action-name">Shove</span>
+                            <span class="action-cost">
+                                <i class="action-icon single-action"></i>
+                            </span>
+                        </div>
+                        <p>You push a creature away from you.</p>
+                        <div class="action-dcs">
+                            <span class="dc">vs. Target's Fortitude DC</span>
+                        </div>
+                    </div>
+
+                    <div class="skill-action">
+                        <div class="action-header">
+                            <span class="action-name">Swim</span>
+                            <span class="action-cost">
+                                <i class="action-icon move-action"></i>
+                            </span>
+                        </div>
+                        <p>Move through water or similar liquid.</p>
+                        <div class="action-dcs">
+                            <span class="dc">Calm Water DC 10</span>
+                            <span class="dc">Rough Water DC 15</span>
+                            <span class="dc">Stormy DC 20+</span>
+                        </div>
+                    </div>
+
+                    <div class="skill-action">
+                        <div class="action-header">
+                            <span class="action-name">Trip</span>
+                            <span class="action-cost">
+                                <i class="action-icon single-action"></i>
+                            </span>
+                        </div>
+                        <p>You try to knock a creature to the ground.</p>
+                        <div class="action-dcs">
+                            <span class="dc">vs. Target's Reflex DC</span>
+                        </div>
+                    </div>
+
+                    <div class="skill-action">
+                        <div class="action-header">
+                            <span class="action-name">Disarm</span>
+                            <span class="action-cost">
+                                <i class="action-icon single-action"></i>
+                            </span>
+                            <span class="trained-only">Trained</span>
+                        </div>
+                        <p>You try to knock something out of a creature's grasp.</p>
+                        <div class="action-dcs">
+                            <span class="dc">vs. Target's Reflex DC</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="proficiency-benefits">
+                <h5>Proficiency Benefits</h5>
+                <div class="benefits-grid">
+                    <div class="benefit-level">
+                        <span class="level-name">Untrained</span>
+                        <span class="benefit">Basic Athletics actions</span>
+                    </div>
+                    <div class="benefit-level">
+                        <span class="level-name">Trained</span>
+                        <span class="benefit">Disarm action unlocked</span>
+                    </div>
+                    <div class="benefit-level">
+                        <span class="level-name">Expert</span>
+                        <span class="benefit">Improved success rates</span>
+                    </div>
+                    <div class="benefit-level">
+                        <span class="level-name">Master</span>
+                        <span class="benefit">Critical successes on 19-20</span>
+                    </div>
+                    <div class="benefit-level">
+                        <span class="level-name">Legendary</span>
+                        <span class="benefit">Superhuman athletic feats possible</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="skill-actions-bar">
+        <button class="btn btn-secondary btn-sm" @onclick="ToggleDetails">
+            @if (ShowDetails)
+            {
+                <i class="fas fa-chevron-up"></i> <text>Less Details</text>
+            }
+            else
+            {
+                <i class="fas fa-chevron-down"></i> <text>More Details</text>
+            }
+        </button>
+        <button class="btn btn-info btn-sm" @onclick="RollSkillCheck">
+            <i class="fas fa-dice"></i> Roll Check
+        </button>
+    </div>
+
+    @if (LastRollResult != null)
+    {
+        <div class="roll-result @GetRollResultClass()">
+            <div class="roll-details">
+                <span class="roll-total">Total: @LastRollResult.Total</span>
+                <span class="roll-breakdown">(@LastRollResult.DiceRoll + @LastRollResult.Modifier)</span>
+                <span class="roll-outcome">@LastRollResult.Outcome</span>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public bool ShowDetails { get; set; }
+    [Parameter] public CharacterBuilder? Character { get; set; }
+    [Parameter] public ProficiencyLevel InitialProficiency { get; set; } = ProficiencyLevel.Untrained;
+    [Parameter] public EventCallback<ProficiencyLevel> OnProficiencyChanged { get; set; }
+
+    private ProficiencyLevel SelectedProficiency { get; set; } = ProficiencyLevel.Untrained;
+    private SkillRollResult? LastRollResult { get; set; }
+
+    protected override void OnInitialized()
+    {
+        SelectedProficiency = InitialProficiency;
+    }
+
+    private async Task UpdateProficiency()
+    {
+        await OnProficiencyChanged.InvokeAsync(SelectedProficiency);
+    }
+
+    private void ToggleDetails()
+    {
+        ShowDetails = !ShowDetails;
+    }
+
+    private int CalculateSkillBonus()
+    {
+        var abilityModifier = GetAbilityModifier(AbilityScore.Strength);
+        var proficiencyBonus = GetProficiencyBonus(SelectedProficiency);
+        var level = Character?.Level ?? 1;
+        
+        return abilityModifier + proficiencyBonus + (SelectedProficiency != ProficiencyLevel.Untrained ? level : 0);
+    }
+
+    private string GetBonusBreakdown()
+    {
+        var abilityMod = GetAbilityModifier(AbilityScore.Strength);
+        var profBonus = GetProficiencyBonus(SelectedProficiency);
+        var level = Character?.Level ?? 1;
+        var levelBonus = SelectedProficiency != ProficiencyLevel.Untrained ? level : 0;
+
+        var parts = new List<string>();
+        if (abilityMod != 0) parts.Add($"{abilityMod:+0;-0} Str");
+        if (profBonus != 0) parts.Add($"{profBonus:+0;-0} prof");
+        if (levelBonus != 0) parts.Add($"{levelBonus:+0;-0} level");
+
+        return string.Join(", ", parts);
+    }
+
+    private int GetAbilityModifier(AbilityScore ability)
+    {
+        if (Character?.AbilityScores?.ContainsKey(ability) == true)
+        {
+            var score = Character.AbilityScores[ability];
+            return (score - 10) / 2;
+        }
+        return 0; // Default for testing
+    }
+
+    private int GetProficiencyBonus(ProficiencyLevel proficiency) => proficiency switch
+    {
+        ProficiencyLevel.Untrained => 0,
+        ProficiencyLevel.Trained => 2,
+        ProficiencyLevel.Expert => 4,
+        ProficiencyLevel.Master => 6,
+        ProficiencyLevel.Legendary => 8,
+        _ => 0
+    };
+
+    private void RollSkillCheck()
+    {
+        var random = new Random();
+        var diceRoll = random.Next(1, 21); // d20
+        var modifier = CalculateSkillBonus();
+        var total = diceRoll + modifier;
+
+        var outcome = diceRoll switch
+        {
+            20 => "Critical Success!",
+            1 => "Critical Failure!",
+            _ => total switch
+            {
+                >= 25 => "Critical Success!",
+                >= 15 => "Success",
+                >= 10 => "Failure",
+                _ => "Critical Failure!"
+            }
+        };
+
+        LastRollResult = new SkillRollResult
+        {
+            DiceRoll = diceRoll,
+            Modifier = modifier,
+            Total = total,
+            Outcome = outcome
+        };
+    }
+
+    private string GetRollResultClass() => LastRollResult?.Outcome switch
+    {
+        var outcome when outcome.Contains("Critical Success") => "critical-success",
+        var outcome when outcome.Contains("Success") => "success",
+        var outcome when outcome.Contains("Critical Failure") => "critical-failure",
+        _ => "failure"
+    };
+
+    public static PathfinderSkill GetSkillDefinition()
+    {
+        return new PathfinderSkill
+        {
+            Id = "athletics",
+            Name = "Athletics",
+            Description = "Athletics allows you to perform deeds of physical prowess.",
+            KeyAbility = AbilityScore.Strength,
+            SkillType = "Physical",
+            Source = "Core Rulebook",
+            Actions = new List<SkillAction>
+            {
+                new() { Name = "Climb", ActionCost = 1, Description = "Move up, down, or across an inclined surface" },
+                new() { Name = "Force Open", ActionCost = 1, Description = "Use brute force to open something" },
+                new() { Name = "Grapple", ActionCost = 1, Description = "Grab a creature or object" },
+                new() { Name = "High Jump", ActionCost = 2, Description = "Make a vertical leap" },
+                new() { Name = "Long Jump", ActionCost = 2, Description = "Make a horizontal leap" },
+                new() { Name = "Shove", ActionCost = 1, Description = "Push a creature away" },
+                new() { Name = "Swim", ActionCost = 1, Description = "Move through water" },
+                new() { Name = "Trip", ActionCost = 1, Description = "Knock a creature to the ground" },
+                new() { Name = "Disarm", ActionCost = 1, Description = "Knock something from grasp", RequiresTrained = true }
+            }
+        };
+    }
+
+    public class SkillRollResult
+    {
+        public int DiceRoll { get; set; }
+        public int Modifier { get; set; }
+        public int Total { get; set; }
+        public string Outcome { get; set; } = string.Empty;
+    }
+}

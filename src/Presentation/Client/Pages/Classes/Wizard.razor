@@ -1,0 +1,212 @@
+@page "/classes/wizard"
+@using PathfinderCampaignManager.Domain.Entities.Auth
+@using PathfinderCampaignManager.Presentation.Client.Attributes
+@using PathfinderCampaignManager.Presentation.Client.Components.Auth
+
+<PageTitle>Wizard - Pathfinder Campaign Manager</PageTitle>
+
+<div class="class-page wizard-page">
+    <div class="class-header">
+        <h1 class="class-title">
+            <i class="class-icon fas fa-hat-wizard"></i>
+            Wizard
+        </h1>
+        <p class="class-subtitle">You are an eternal student of the arcane secrets of the universe</p>
+    </div>
+
+    <div class="class-content">
+        <!-- Basic Information - Visible to All -->
+        <div class="class-basics card mb-4">
+            <div class="card-header">
+                <h3>Class Overview</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Key Ability:</strong> Intelligence</p>
+                        <p><strong>Hit Points:</strong> 6 + Con modifier</p>
+                        <p><strong>Primary Saves:</strong> Will</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Skill Increases:</strong> 2 + Int modifier</p>
+                        <p><strong>Weapon Prof:</strong> Simple weapons, club, crossbow, dagger, staff</p>
+                        <p><strong>Armor Prof:</strong> Unarmored</p>
+                    </div>
+                </div>
+                <p class="class-description mt-3">
+                    Using your mastery of magic, you cast powerful and devastating spells. You treat 
+                    magic as a science, cross-referencing the latest texts on practical spellcraft.
+                </p>
+            </div>
+        </div>
+
+        <!-- Class Features - Player Visible -->
+        <AuthorizedView RequiredRole="UserRole.Player">
+            <div class="class-features card mb-4">
+                <div class="card-header">
+                    <h3>Key Class Features</h3>
+                </div>
+                <div class="card-body">
+                    <div class="feature mb-3">
+                        <h5>Spellcasting</h5>
+                        <p>You can cast arcane spells using spell slots. You prepare spells from your spellbook each day.</p>
+                    </div>
+                    <div class="feature mb-3">
+                        <h5>Arcane School</h5>
+                        <p>You can choose to specialize in one of the eight schools of magic.</p>
+                        <ul>
+                            <li><strong>Abjuration:</strong> Protective magic and wards</li>
+                            <li><strong>Conjuration:</strong> Summoning and teleportation</li>
+                            <li><strong>Divination:</strong> Knowledge and foresight</li>
+                            <li><strong>Enchantment:</strong> Mental influence</li>
+                            <li><strong>Evocation:</strong> Raw magical energy</li>
+                            <li><strong>Illusion:</strong> Deception and misdirection</li>
+                            <li><strong>Necromancy:</strong> Death and undeath</li>
+                            <li><strong>Transmutation:</strong> Change and transformation</li>
+                        </ul>
+                    </div>
+                    <div class="feature mb-3">
+                        <h5>Arcane Bond</h5>
+                        <p>You form a bond with either a familiar or a bonded item that aids your spellcasting.</p>
+                    </div>
+                </div>
+            </div>
+        </AuthorizedView>
+
+        <!-- Character Building Guide - DM and Above -->
+        <AuthorizedView RequiredRole="UserRole.DM">
+            <div class="dm-notes card mb-4">
+                <div class="card-header bg-warning">
+                    <h3><i class="fas fa-eye"></i> DM Notes</h3>
+                </div>
+                <div class="card-body">
+                    <h5>Character Building Recommendations</h5>
+                    <ul>
+                        <li><strong>Ability Scores:</strong> Prioritize Intelligence, then Constitution and Dexterity</li>
+                        <li><strong>Skills:</strong> Arcana (essential), Crafting, Medicine, Nature, Religion</li>
+                        <li><strong>Early Feats:</strong> Reach Spell, Cantrip Expansion, or school-specific feats</li>
+                        <li><strong>Equipment:</strong> Spellbook, component pouch, staff or wand</li>
+                    </ul>
+                    
+                    <h5>Roleplay Hooks</h5>
+                    <ul>
+                        <li>Academy scholar seeking lost knowledge</li>
+                        <li>Self-taught hedge wizard</li>
+                        <li>Former apprentice to a powerful wizard</li>
+                        <li>Researcher focused on a specific school of magic</li>
+                    </ul>
+
+                    <h5>Spell Management Tips</h5>
+                    <ul>
+                        <li>Prepare utility spells for common situations</li>
+                        <li>Balance offensive and defensive options</li>
+                        <li>Consider spell slot economy</li>
+                        <li>Keep scrolls for emergency spells</li>
+                    </ul>
+                </div>
+            </div>
+        </AuthorizedView>
+
+        <!-- Advanced Mechanics - Admin Only -->
+        <AuthorizedView RequiredRole="UserRole.Admin">
+            <div class="admin-content card mb-4">
+                <div class="card-header bg-danger text-white">
+                    <h3><i class="fas fa-cog"></i> Admin Content</h3>
+                </div>
+                <div class="card-body">
+                    <h5>Advanced Wizard Mechanics</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Spell Slot Progression</h6>
+                            <ul>
+                                <li>1st level: Two 1st-level spell slots</li>
+                                <li>2nd level: Three 1st-level spell slots</li>
+                                <li>3rd level: Two 1st, two 2nd-level slots</li>
+                                <li>Full progression follows standard table</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Spells Known</h6>
+                            <ul>
+                                <li>Cantrips: 5 at 1st level, +1 every 2 levels</li>
+                                <li>1st level spells: 6 + Int modifier</li>
+                                <li>Higher level: 2 spells per spell level</li>
+                                <li>Bonus spells from specialization</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <h6>School Specialization Benefits</h6>
+                    <div class="alert alert-info">
+                        <ul class="mb-0">
+                            <li>Extra spell slot of your highest level</li>
+                            <li>One additional spell in spellbook per level</li>
+                            <li>School-specific focus spell</li>
+                            <li>Cannot cast spells from opposed schools</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </AuthorizedView>
+
+        <!-- Character Creation Tools -->
+        <div class="character-tools card">
+            <div class="card-header">
+                <h3>Character Creation</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <a href="/character-wizard?class=wizard" class="btn btn-primary btn-lg w-100 mb-2">
+                            <i class="fas fa-magic"></i> Create Wizard Character
+                        </a>
+                    </div>
+                    <div class="col-md-6">
+                        <a href="/classes" class="btn btn-outline-secondary btn-lg w-100 mb-2">
+                            <i class="fas fa-list"></i> View All Classes
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .wizard-page {
+        background: linear-gradient(135deg, #a29bfe 0%, #6c5ce7 100%);
+        min-height: 100vh;
+        padding: 20px;
+    }
+
+    .class-header {
+        text-align: center;
+        margin-bottom: 2rem;
+        background: white;
+        padding: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .class-title {
+        color: #6c5ce7;
+        font-size: 3rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .class-icon {
+        color: #a29bfe;
+        margin-right: 15px;
+    }
+
+    .class-subtitle {
+        color: #666;
+        font-style: italic;
+        font-size: 1.2rem;
+    }
+
+    .feature h5 {
+        color: #6c5ce7;
+        font-weight: bold;
+    }
+</style>

@@ -1,0 +1,594 @@
+@page "/rules"
+@page "/rules/{categoryName}"
+@page "/rules/{categoryName}/{ruleId}"
+@using PathfinderCampaignManager.Domain.Entities.Rules
+@using PathfinderCampaignManager.Presentation.Client.Services
+@inject RulesApiService RulesRepository
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+
+<PageTitle>Pathfinder 2e Rules Reference</PageTitle>
+
+<div class="rules-page">
+    <!-- Header -->
+    <div class="rules-header">
+        <div class="header-content">
+            <h1>
+                <i class="fas fa-book"></i>
+                Rules Reference
+            </h1>
+            <p class="header-description">
+                Comprehensive Pathfinder 2e mechanics and rules organized by category
+            </p>
+        </div>
+        
+        <!-- Search Bar -->
+        <div class="search-section">
+            <div class="search-input-group">
+                <i class="fas fa-search"></i>
+                <input type="text" 
+                       class="form-control" 
+                       placeholder="Search rules, conditions, mechanics..." 
+                       @bind="searchTerm" 
+                       @oninput="OnSearchInput" />
+                @if (!string.IsNullOrEmpty(searchTerm))
+                {
+                    <button class="btn btn-clear" @onclick="ClearSearch">
+                        <i class="fas fa-times"></i>
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="rules-content">
+        <!-- Left Sidebar: Category Navigation -->
+        <div class="rules-sidebar">
+            <div class="category-nav">
+                <h3>Categories</h3>
+                <div class="category-list">
+                    @if (categoryCounts != null)
+                    {
+                        @foreach (var category in Enum.GetValues<RuleCategory>())
+                        {
+                            var count = categoryCounts.GetValueOrDefault(category, 0);
+                            var isActive = selectedCategory == category;
+                            
+                            <a class="category-item @(isActive ? "active" : "")" 
+                               href="/rules/@GetCategorySlug(category)"
+                               @onclick="() => SelectCategory(category)"
+                               @onclick:preventDefault="true">
+                                <div class="category-icon">
+                                    <i class="@category.GetIconClass()"></i>
+                                </div>
+                                <div class="category-info">
+                                    <div class="category-name">@category.GetDisplayName()</div>
+                                    <div class="category-count">@count rules</div>
+                                </div>
+                            </a>
+                        }
+                    }
+                </div>
+                
+                <!-- Quick Links -->
+                <div class="quick-links">
+                    <h4>Quick Access</h4>
+                    <div class="quick-link-list">
+                        <a href="/rules/conditions/blinded" class="quick-link">
+                            <i class="fas fa-eye-slash"></i>
+                            Conditions
+                        </a>
+                        <a href="/rules/combat/cover" class="quick-link">
+                            <i class="fas fa-shield"></i>
+                            Cover & Combat
+                        </a>
+                        <a href="/rules/environment/environmental-damage" class="quick-link">
+                            <i class="fas fa-fire"></i>
+                            Environmental Damage
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="rules-main">
+            @if (isLoading)
+            {
+                <div class="loading-state">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Loading rules...</p>
+                </div>
+            }
+            else if (!string.IsNullOrEmpty(searchTerm) && searchResults != null)
+            {
+                <!-- Search Results -->
+                <div class="search-results">
+                    <div class="results-header">
+                        <h2>Search Results</h2>
+                        <p>@searchResults.Count() results for "@searchTerm"</p>
+                    </div>
+                    
+                    <div class="rules-grid">
+                        @foreach (var rule in searchResults)
+                        {
+                            <RuleCard Rule="rule" OnRuleClick="HandleRuleCardClick" />
+                        }
+                    </div>
+                </div>
+            }
+            else if (selectedRule != null)
+            {
+                <!-- Rule Detail View -->
+                <RuleDetailView Rule="selectedRule" 
+                                Table="selectedTable" 
+                                Formula="selectedFormula"
+                                OnBackClick="ClearRuleSelection" />
+            }
+            else if (selectedCategory != null && categoryRules != null)
+            {
+                <!-- Category View -->
+                <div class="category-view">
+                    <div class="category-header">
+                        <h2>
+                            <i class="@selectedCategory.Value.GetIconClass()"></i>
+                            @selectedCategory.Value.GetDisplayName()
+                        </h2>
+                        <p class="category-description">@selectedCategory.Value.GetDescription()</p>
+                    </div>
+                    
+                    <div class="rules-grid">
+                        @foreach (var rule in categoryRules)
+                        {
+                            <RuleCard Rule="rule" OnRuleClick="HandleRuleCardClick" />
+                        }
+                    </div>
+                </div>
+            }
+            else
+            {
+                <!-- Overview -->
+                <div class="rules-overview">
+                    <div class="overview-header">
+                        <h2>Pathfinder 2e Rules Reference</h2>
+                        <p>Navigate by category or search for specific rules and mechanics.</p>
+                    </div>
+                    
+                    <div class="featured-sections">
+                        <div class="featured-grid">
+                            @foreach (var category in Enum.GetValues<RuleCategory>().Take(6))
+                            {
+                                var count = categoryCounts?.GetValueOrDefault(category, 0) ?? 0;
+                                
+                                <div class="featured-card" @onclick="() => SelectCategory(category)">
+                                    <div class="featured-icon">
+                                        <i class="@category.GetIconClass()"></i>
+                                    </div>
+                                    <div class="featured-info">
+                                        <h3>@category.GetDisplayName()</h3>
+                                        <p>@count rules</p>
+                                        <small>@category.GetDescription()</small>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Right Panel: Context & Quick Reference -->
+        <div class="rules-aside">
+            <div class="context-panel">
+                @if (selectedRule != null)
+                {
+                    <div class="rule-metadata">
+                        <h4>Rule Information</h4>
+                        <div class="metadata-item">
+                            <strong>Category:</strong> @selectedRule.Category.GetDisplayName()
+                        </div>
+                        <div class="metadata-item">
+                            <strong>Type:</strong> @selectedRule.ContentType
+                        </div>
+                        @if (selectedRule.Traits.Any())
+                        {
+                            <div class="metadata-item">
+                                <strong>Traits:</strong>
+                                <div class="trait-list">
+                                    @foreach (var trait in selectedRule.Traits)
+                                    {
+                                        <span class="trait-badge">@trait</span>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        @if (selectedRule.Tags.Any())
+                        {
+                            <div class="metadata-item">
+                                <strong>Tags:</strong>
+                                <div class="tag-list">
+                                    @foreach (var tag in selectedRule.Tags)
+                                    {
+                                        <span class="tag-badge">@tag</span>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="context-help">
+                        <h4>How to Use</h4>
+                        <ul>
+                            <li>Browse by <strong>category</strong> for organized rules</li>
+                            <li>Use <strong>search</strong> to find specific mechanics</li>
+                            <li>Click on <strong>rule cards</strong> for detailed information</li>
+                            <li>View <strong>tables</strong> and <strong>formulas</strong> inline</li>
+                        </ul>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.rules-page {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: var(--surface-background);
+}
+
+.rules-header {
+    background: white;
+    border-bottom: 1px solid var(--border-color);
+    padding: 2rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.header-content {
+    margin-bottom: 1.5rem;
+}
+
+.header-content h1 {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.header-description {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 1.125rem;
+}
+
+.search-section {
+    max-width: 600px;
+}
+
+.search-input-group {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.search-input-group i {
+    position: absolute;
+    left: 1rem;
+    color: var(--text-secondary);
+    z-index: 1;
+}
+
+.search-input-group .form-control {
+    padding-left: 2.5rem;
+    padding-right: 2.5rem;
+    border-radius: 0.5rem;
+    border: 2px solid var(--border-color);
+    font-size: 1rem;
+}
+
+.search-input-group .form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px var(--primary-color-20);
+}
+
+.btn-clear {
+    position: absolute;
+    right: 0.5rem;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+}
+
+.rules-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.rules-sidebar {
+    width: 280px;
+    background: white;
+    border-right: 1px solid var(--border-color);
+    padding: 1.5rem;
+    overflow-y: auto;
+}
+
+.category-nav h3 {
+    margin: 0 0 1rem 0;
+    color: var(--text-primary);
+    font-size: 1.125rem;
+}
+
+.category-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+}
+
+.category-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem;
+    border-radius: 0.5rem;
+    color: var(--text-primary);
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.category-item:hover {
+    background: var(--primary-color-5);
+    border-color: var(--primary-color-20);
+    color: var(--text-primary);
+    text-decoration: none;
+}
+
+.category-item.active {
+    background: var(--primary-color-10);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.category-icon {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface-background);
+    border-radius: 0.375rem;
+    font-size: 1rem;
+}
+
+.category-item.active .category-icon {
+    background: var(--primary-color);
+    color: white;
+}
+
+.category-name {
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.category-count {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.quick-links {
+    border-top: 1px solid var(--border-color);
+    padding-top: 1.5rem;
+}
+
+.quick-links h4 {
+    margin: 0 0 1rem 0;
+    font-size: 1rem;
+    color: var(--text-primary);
+}
+
+.quick-link-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.quick-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+}
+
+.quick-link:hover {
+    background: var(--surface-background);
+    color: var(--text-primary);
+    text-decoration: none;
+}
+
+.rules-main {
+    flex: 1;
+    padding: 2rem;
+    overflow-y: auto;
+}
+
+.rules-aside {
+    width: 300px;
+    background: white;
+    border-left: 1px solid var(--border-color);
+    padding: 1.5rem;
+    overflow-y: auto;
+}
+
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem;
+    color: var(--text-secondary);
+}
+
+.loading-state i {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+.results-header {
+    margin-bottom: 2rem;
+}
+
+.results-header h2 {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-primary);
+}
+
+.rules-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+}
+
+.category-view, .rules-overview {
+    max-width: none;
+}
+
+.category-header, .overview-header {
+    margin-bottom: 2rem;
+}
+
+.category-header h2, .overview-header h2 {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.category-description {
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.featured-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+.featured-card {
+    display: flex;
+    gap: 1rem;
+    padding: 1.5rem;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.featured-card:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.featured-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary-color-10);
+    border-radius: 0.5rem;
+    color: var(--primary-color);
+    font-size: 1.5rem;
+}
+
+.featured-info h3 {
+    margin: 0 0 0.25rem 0;
+    font-size: 1.125rem;
+    color: var(--text-primary);
+}
+
+.featured-info p {
+    margin: 0 0 0.5rem 0;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.featured-info small {
+    color: var(--text-secondary);
+    line-height: 1.3;
+}
+
+.rule-metadata {
+    padding: 1rem 0;
+}
+
+.rule-metadata h4 {
+    margin: 0 0 1rem 0;
+    color: var(--text-primary);
+}
+
+.metadata-item {
+    margin-bottom: 1rem;
+}
+
+.metadata-item strong {
+    color: var(--text-primary);
+    font-size: 0.875rem;
+}
+
+.trait-list, .tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+}
+
+.trait-badge, .tag-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border-radius: 0.25rem;
+}
+
+.trait-badge {
+    background: var(--primary-color-10);
+    color: var(--primary-color);
+}
+
+.tag-badge {
+    background: var(--surface-background);
+    color: var(--text-secondary);
+}
+
+.context-help h4 {
+    margin: 0 0 1rem 0;
+    color: var(--text-primary);
+}
+
+.context-help ul {
+    padding-left: 1.25rem;
+    line-height: 1.5;
+}
+
+.context-help li {
+    margin-bottom: 0.5rem;
+    color: var(--text-secondary);
+}
+</style>

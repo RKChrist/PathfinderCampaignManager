@@ -1,0 +1,661 @@
+@using PathfinderCampaignManager.Presentation.Client.Services
+@using PathfinderCampaignManager.Presentation.Shared.Models
+@inject CombatSignalRService CombatService
+@implements IAsyncDisposable
+
+<div class="realtime-combat-tracker">
+    <div class="combat-header">
+        <div class="combat-info">
+            <h4 class="combat-title">
+                <i class="fas fa-sword me-2"></i>
+                Real-Time Combat Tracker
+                @if (IsConnected)
+                {
+                    <span class="badge bg-success ms-2">Live</span>
+                }
+                else
+                {
+                    <span class="badge bg-danger ms-2">Disconnected</span>
+                }
+            </h4>
+            
+            @if (CurrentCombat != null && CurrentCombat.IsActive)
+            {
+                <div class="combat-status">
+                    <span class="current-turn">
+                        Round @CurrentCombat.Round, 
+                        Turn @(CurrentCombat.CurrentTurn + 1) of @CurrentCombat.Participants.Count
+                    </span>
+                    @if (CurrentCombat.IsPaused)
+                    {
+                        <span class="badge bg-warning ms-2">Paused</span>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="combat-actions">
+            @if (!IsConnected)
+            {
+                <button class="btn btn-outline-primary btn-sm" @onclick="ConnectAsync">
+                    <i class="fas fa-plug me-1"></i>
+                    Connect
+                </button>
+            }
+            else if (CurrentCombat?.IsActive == true)
+            {
+                @if (!CurrentCombat.IsPaused)
+                {
+                    <button class="btn btn-warning btn-sm me-2" @onclick="PauseCombat">
+                        <i class="fas fa-pause me-1"></i>
+                        Pause
+                    </button>
+                }
+                else
+                {
+                    <button class="btn btn-success btn-sm me-2" @onclick="ResumeCombat">
+                        <i class="fas fa-play me-1"></i>
+                        Resume
+                    </button>
+                }
+                
+                <button class="btn btn-primary btn-sm me-2" @onclick="NextTurn">
+                    <i class="fas fa-forward me-1"></i>
+                    Next Turn
+                </button>
+                
+                <button class="btn btn-danger btn-sm" @onclick="EndCombat">
+                    <i class="fas fa-stop me-1"></i>
+                    End Combat
+                </button>
+            }
+            else
+            {
+                <button class="btn btn-success btn-sm" @onclick="StartCombat">
+                    <i class="fas fa-play me-1"></i>
+                    Start Combat
+                </button>
+            }
+        </div>
+    </div>
+
+    @if (CurrentCombat != null && CurrentCombat.Participants.Any())
+    {
+        <div class="participants-list">
+            @foreach (var participant in CurrentCombat.Participants.Select((p, index) => new { Participant = p, Index = index }))
+            {
+                <div class="participant-card @(IsCurrentTurn(participant.Index) ? "current-turn" : "") @(participant.Participant.CurrentHitPoints <= 0 ? "unconscious" : "")">
+                    <div class="participant-header">
+                        <div class="participant-info">
+                            <h6 class="participant-name">
+                                @participant.Participant.Name
+                                @if (IsCurrentTurn(participant.Index))
+                                {
+                                    <span class="turn-indicator">
+                                        <i class="fas fa-chevron-right text-primary"></i>
+                                    </span>
+                                }
+                            </h6>
+                            <div class="participant-meta">
+                                <span class="initiative-display">
+                                    Init: @participant.Participant.Initiative
+                                </span>
+                                <span class="type-display">
+                                    @(participant.Participant.IsPlayerCharacter ? "PC" : "NPC")
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="participant-actions">
+                            <button class="btn btn-outline-primary btn-sm" @onclick="() => RollInitiative(participant.Participant.Id.ToString())">
+                                <i class="fas fa-dice-d20"></i>
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm" @onclick="() => RemoveParticipant(participant.Participant.Id.ToString())">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="participant-stats">
+                        <div class="hp-section">
+                            <label class="form-label">Hit Points</label>
+                            <div class="hp-controls">
+                                <input type="number" class="form-control form-control-sm" 
+                                       @bind="participant.Participant.CurrentHitPoints"
+                                       @bind:after="() => UpdateHitPoints(participant.Participant)" />
+                                <span class="hp-separator">/</span>
+                                <input type="number" class="form-control form-control-sm" 
+                                       @bind="participant.Participant.HitPoints"
+                                       @bind:after="() => UpdateHitPoints(participant.Participant)" />
+                            </div>
+                            <div class="hp-bar">
+                                <div class="hp-fill" style="width: @GetHpPercentage(participant.Participant)%"></div>
+                            </div>
+                        </div>
+
+                        @if (participant.Participant.Conditions.Any())
+                        {
+                            <div class="conditions-section">
+                                <label class="form-label">Conditions</label>
+                                <div class="conditions-list">
+                                    @foreach (var condition in participant.Participant.Conditions)
+                                    {
+                                        <span class="condition-badge">
+                                            @condition
+                                            <button class="condition-remove" @onclick="() => RemoveCondition(participant.Participant, condition)">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </span>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    @if (CombatMessages.Any())
+    {
+        <div class="combat-log">
+            <h6 class="log-title">
+                <i class="fas fa-scroll me-2"></i>
+                Combat Log
+            </h6>
+            <div class="log-messages">
+                @foreach (var message in CombatMessages.TakeLast(10))
+                {
+                    <div class="log-message @message.Type">
+                        <span class="message-text">@message.Message</span>
+                        <small class="message-time">@message.Timestamp.ToString("HH:mm:ss")</small>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string CombatId { get; set; } = "";
+    [Parameter] public string? CampaignId { get; set; }
+
+    private CombatSession? CurrentCombat;
+    private bool IsConnected = false;
+    private List<CombatMessage> CombatMessages = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Subscribe to SignalR events
+        CombatService.OnCombatStateUpdated += OnCombatStateUpdated;
+        CombatService.OnInitiativeUpdated += OnInitiativeUpdated;
+        CombatService.OnInitiativeRolled += OnInitiativeRolled;
+        CombatService.OnHitPointsUpdated += OnHitPointsUpdated;
+        CombatService.OnParticipantAdded += OnParticipantAdded;
+        CombatService.OnParticipantRemoved += OnParticipantRemoved;
+        CombatService.OnCombatStarted += OnCombatStarted;
+        CombatService.OnCombatEnded += OnCombatEnded;
+        CombatService.OnCombatPaused += OnCombatPaused;
+        CombatService.OnCombatResumed += OnCombatResumed;
+        CombatService.OnTurnChanged += OnTurnChanged;
+        CombatService.OnCombatMessageReceived += OnCombatMessageReceived;
+        CombatService.OnDiceRollShared += OnDiceRollShared;
+
+        await ConnectAsync();
+    }
+
+    private async Task ConnectAsync()
+    {
+        try
+        {
+            await CombatService.InitializeAsync();
+            CombatService.SubscribeToEvents();
+            
+            if (!string.IsNullOrEmpty(CombatId))
+            {
+                await CombatService.JoinCombatAsync(CombatId);
+            }
+            
+            IsConnected = CombatService.IsConnected;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to connect to combat: {ex.Message}");
+        }
+    }
+
+    // Combat Actions
+    private async Task StartCombat()
+    {
+        if (IsConnected && !string.IsNullOrEmpty(CombatId))
+        {
+            await CombatService.StartCombatAsync(CombatId);
+        }
+    }
+
+    private async Task EndCombat()
+    {
+        if (IsConnected && !string.IsNullOrEmpty(CombatId))
+        {
+            await CombatService.EndCombatAsync(CombatId);
+        }
+    }
+
+    private async Task PauseCombat()
+    {
+        if (IsConnected && !string.IsNullOrEmpty(CombatId))
+        {
+            await CombatService.PauseCombatAsync(CombatId);
+        }
+    }
+
+    private async Task ResumeCombat()
+    {
+        if (IsConnected && !string.IsNullOrEmpty(CombatId))
+        {
+            await CombatService.ResumeCombatAsync(CombatId);
+        }
+    }
+
+    private async Task NextTurn()
+    {
+        if (IsConnected && !string.IsNullOrEmpty(CombatId))
+        {
+            await CombatService.NextTurnAsync(CombatId);
+        }
+    }
+
+    private async Task RollInitiative(string participantId)
+    {
+        if (IsConnected && !string.IsNullOrEmpty(CombatId))
+        {
+            await CombatService.RollInitiativeAsync(CombatId, participantId);
+        }
+    }
+
+    private async Task UpdateHitPoints(CombatParticipant participant)
+    {
+        if (IsConnected && !string.IsNullOrEmpty(CombatId))
+        {
+            await CombatService.UpdateHitPointsAsync(CombatId, participant.Id.ToString(), 
+                participant.CurrentHitPoints, participant.HitPoints);
+        }
+    }
+
+    private async Task RemoveParticipant(string participantId)
+    {
+        if (IsConnected && !string.IsNullOrEmpty(CombatId))
+        {
+            await CombatService.RemoveParticipantAsync(CombatId, participantId);
+        }
+    }
+
+    private async Task RemoveCondition(CombatParticipant participant, string condition)
+    {
+        participant.Conditions.Remove(condition);
+        if (IsConnected && !string.IsNullOrEmpty(CombatId))
+        {
+            await CombatService.UpdateParticipantConditionsAsync(CombatId, participant.Id.ToString(), participant.Conditions);
+        }
+    }
+
+    // Helper Methods
+    private bool IsCurrentTurn(int participantIndex)
+    {
+        return CurrentCombat?.IsActive == true && CurrentCombat.CurrentTurn == participantIndex;
+    }
+
+    private double GetHpPercentage(CombatParticipant participant)
+    {
+        if (participant.HitPoints <= 0) return 0;
+        return Math.Max(0, (double)participant.CurrentHitPoints / participant.HitPoints * 100);
+    }
+
+    // SignalR Event Handlers
+    private void OnCombatStateUpdated(CombatSession session)
+    {
+        CurrentCombat = session;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnInitiativeUpdated(string participantId, int initiative)
+    {
+        AddCombatMessage($"Initiative updated for participant {participantId}: {initiative}", "system");
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnInitiativeRolled(string participantId, int roll, int modifier, int total)
+    {
+        var participant = CurrentCombat?.Participants.FirstOrDefault(p => p.Id.ToString() == participantId);
+        var name = participant?.Name ?? participantId;
+        AddCombatMessage($"{name} rolled initiative: {roll} + {modifier} = {total}", "initiative");
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnHitPointsUpdated(string participantId, int currentHp, int maxHp)
+    {
+        var participant = CurrentCombat?.Participants.FirstOrDefault(p => p.Id.ToString() == participantId);
+        var name = participant?.Name ?? participantId;
+        AddCombatMessage($"{name} HP updated: {currentHp}/{maxHp}", "damage");
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnParticipantAdded(CombatParticipant participant)
+    {
+        AddCombatMessage($"{participant.Name} joined combat", "system");
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnParticipantRemoved(string participantId)
+    {
+        AddCombatMessage($"Participant {participantId} removed from combat", "system");
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnCombatStarted(CombatSession session)
+    {
+        AddCombatMessage("Combat started!", "system");
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnCombatEnded(CombatSession session)
+    {
+        AddCombatMessage("Combat ended!", "system");
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnCombatPaused(CombatSession session)
+    {
+        AddCombatMessage("Combat paused", "system");
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnCombatResumed(CombatSession session)
+    {
+        AddCombatMessage("Combat resumed", "system");
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnTurnChanged(int currentTurn, int round)
+    {
+        var participant = CurrentCombat?.Participants.ElementAtOrDefault(currentTurn);
+        var name = participant?.Name ?? "Unknown";
+        AddCombatMessage($"Round {round}: {name}'s turn", "turn");
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnCombatMessageReceived(object messageObj)
+    {
+        var message = (dynamic)messageObj;
+        AddCombatMessage(message.Message?.ToString() ?? "", message.Type?.ToString() ?? "info");
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnDiceRollShared(object rollObj)
+    {
+        var roll = (dynamic)rollObj;
+        AddCombatMessage($"{roll.RolledBy} shared a dice roll", "dice");
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void AddCombatMessage(string message, string type)
+    {
+        CombatMessages.Add(new CombatMessage
+        {
+            Message = message,
+            Type = type,
+            Timestamp = DateTime.Now
+        });
+
+        // Keep only last 50 messages
+        if (CombatMessages.Count > 50)
+        {
+            CombatMessages.RemoveAt(0);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        CombatService.UnsubscribeFromEvents();
+        
+        if (IsConnected && !string.IsNullOrEmpty(CombatId))
+        {
+            await CombatService.LeaveCombatAsync(CombatId);
+        }
+    }
+
+    private class CombatMessage
+    {
+        public string Message { get; set; } = "";
+        public string Type { get; set; } = "";
+        public DateTime Timestamp { get; set; }
+    }
+}
+
+<style>
+.realtime-combat-tracker {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.combat-header {
+    background: var(--bs-primary);
+    color: white;
+    padding: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.combat-title {
+    margin: 0;
+    font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.combat-status {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    opacity: 0.9;
+}
+
+.participants-list {
+    padding: 1.5rem;
+    display: grid;
+    gap: 1rem;
+}
+
+.participant-card {
+    border: 2px solid var(--bs-border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    transition: all 0.2s ease;
+}
+
+.participant-card.current-turn {
+    border-color: var(--bs-primary);
+    background: var(--bs-primary-bg-subtle);
+    box-shadow: 0 0 0 0.125rem rgba(var(--bs-primary-rgb), 0.25);
+}
+
+.participant-card.unconscious {
+    border-color: var(--bs-danger);
+    background: var(--bs-danger-bg-subtle);
+    opacity: 0.7;
+}
+
+.participant-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.participant-name {
+    margin: 0;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.turn-indicator {
+    font-size: 0.8rem;
+}
+
+.participant-meta {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.875rem;
+    color: var(--bs-secondary);
+    margin-top: 0.25rem;
+}
+
+.participant-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.participant-stats {
+    display: grid;
+    gap: 1rem;
+}
+
+.hp-section {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.hp-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.hp-controls input {
+    width: 60px;
+    text-align: center;
+}
+
+.hp-separator {
+    font-weight: bold;
+    color: var(--bs-secondary);
+}
+
+.hp-bar {
+    height: 6px;
+    background: var(--bs-light);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.hp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--bs-success), var(--bs-warning), var(--bs-danger));
+    transition: width 0.3s ease;
+}
+
+.conditions-section {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.conditions-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.condition-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    background: var(--bs-warning);
+    color: var(--bs-dark);
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+}
+
+.condition-remove {
+    background: none;
+    border: none;
+    color: inherit;
+    padding: 0;
+    font-size: 0.6rem;
+    cursor: pointer;
+}
+
+.combat-log {
+    background: var(--bs-light);
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--bs-border-color);
+}
+
+.log-title {
+    margin: 0 0 0.75rem 0;
+    color: var(--bs-primary);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.log-messages {
+    max-height: 200px;
+    overflow-y: auto;
+    display: grid;
+    gap: 0.5rem;
+}
+
+.log-message {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.8rem;
+}
+
+.log-message.system { background: var(--bs-info-bg-subtle); }
+.log-message.initiative { background: var(--bs-primary-bg-subtle); }
+.log-message.damage { background: var(--bs-danger-bg-subtle); }
+.log-message.turn { background: var(--bs-success-bg-subtle); }
+.log-message.dice { background: var(--bs-warning-bg-subtle); }
+
+.message-time {
+    font-size: 0.7rem;
+    opacity: 0.7;
+}
+
+@@media (max-width: 768px) {
+    .combat-header {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+    }
+
+    .combat-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .participant-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+    }
+
+    .participant-actions {
+        justify-content: center;
+    }
+}
+</style>

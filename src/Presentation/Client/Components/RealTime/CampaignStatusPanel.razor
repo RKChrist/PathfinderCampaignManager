@@ -1,0 +1,495 @@
+@using PathfinderCampaignManager.Presentation.Client.Services
+@inject CampaignSignalRService CampaignService
+@implements IAsyncDisposable
+
+<div class="campaign-status-panel @(IsExpanded ? "expanded" : "collapsed")">
+    <div class="status-header" @onclick="ToggleExpanded">
+        <div class="status-indicator @GetConnectionStatusClass()"></div>
+        <span class="status-title">
+            @if (IsConnected)
+            {
+                <span>@ConnectedUsersCount users online</span>
+            }
+            else
+            {
+                <span>Disconnected</span>
+            }
+        </span>
+        <i class="fas @(IsExpanded ? "fa-chevron-down" : "fa-chevron-up") ms-auto"></i>
+    </div>
+
+    @if (IsExpanded)
+    {
+        <div class="status-content">
+            @if (IsConnected && ConnectedUsers.Any())
+            {
+                <div class="connected-users">
+                    <h6 class="mb-2">
+                        <i class="fas fa-users me-2"></i>
+                        Connected Users
+                    </h6>
+                    @foreach (var user in ConnectedUsers)
+                    {
+                        <div class="user-item">
+                            <div class="user-status @GetUserStatusClass(user.Status)"></div>
+                            <div class="user-info">
+                                <span class="user-name">@user.UserName</span>
+                                @if (!string.IsNullOrEmpty(user.CurrentActivity))
+                                {
+                                    <small class="user-activity text-muted d-block">@user.CurrentActivity</small>
+                                }
+                            </div>
+                            <small class="text-muted">@GetTimeAgo(user.LastSeen)</small>
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (RecentMessages.Any())
+            {
+                <div class="recent-messages mt-3">
+                    <h6 class="mb-2">
+                        <i class="fas fa-comments me-2"></i>
+                        Recent Activity
+                    </h6>
+                    <div class="message-list">
+                        @foreach (var message in RecentMessages.TakeLast(5).Reverse())
+                        {
+                            <div class="message-item">
+                                <div class="message-content">
+                                    <span class="message-text">@message.Message</span>
+                                    <small class="message-time text-muted">@GetTimeAgo(message.Timestamp)</small>
+                                </div>
+                                <small class="message-sender text-muted">@message.Sender</small>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            <div class="status-actions mt-3">
+                <div class="input-group input-group-sm">
+                    <select class="form-select" @bind="CurrentStatus" @bind:after="UpdateStatus">
+                        <option value="Online">Online</option>
+                        <option value="Away">Away</option>
+                        <option value="Busy">Busy</option>
+                        <option value="DND">Do Not Disturb</option>
+                    </select>
+                    <input type="text" class="form-control" placeholder="Current activity..." 
+                           @bind="CurrentActivity" @onkeypress="OnActivityKeyPress" />
+                </div>
+                
+                @if (!IsConnected)
+                {
+                    <button class="btn btn-primary btn-sm mt-2" @onclick="Reconnect">
+                        <i class="fas fa-plug me-1"></i>
+                        Reconnect
+                    </button>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string CampaignId { get; set; } = "";
+    [Parameter] public string UserId { get; set; } = "";
+    [Parameter] public string UserName { get; set; } = "";
+
+    private bool IsExpanded = false;
+    private bool IsConnected = false;
+    private int ConnectedUsersCount = 0;
+    private List<ConnectedUser> ConnectedUsers = new();
+    private List<MessageItem> RecentMessages = new();
+    private string CurrentStatus = "Online";
+    private string CurrentActivity = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Subscribe to SignalR events
+        CampaignService.UserJoined += OnUserJoined;
+        CampaignService.UserLeft += OnUserLeft;
+        CampaignService.ConnectedUsersUpdated += OnConnectedUsersUpdated;
+        CampaignService.MessageReceived += OnMessageReceived;
+        CampaignService.UserStatusUpdated += OnUserStatusUpdated;
+        CampaignService.CombatSessionStarted += OnCombatSessionStarted;
+        CampaignService.CombatSessionEnded += OnCombatSessionEnded;
+
+        // Start the SignalR connection
+        await ConnectAsync();
+    }
+
+    private async Task ConnectAsync()
+    {
+        try
+        {
+            await CampaignService.StartAsync("https://localhost:7082");
+            await CampaignService.JoinCampaignAsync(CampaignId, UserId, UserName);
+            IsConnected = CampaignService.IsConnected;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to connect to campaign: {ex.Message}");
+        }
+    }
+
+    private async Task Reconnect()
+    {
+        await ConnectAsync();
+    }
+
+    private void ToggleExpanded()
+    {
+        IsExpanded = !IsExpanded;
+    }
+
+    private async Task UpdateStatus()
+    {
+        if (IsConnected)
+        {
+            await CampaignService.UpdateUserStatusAsync(CampaignId, CurrentStatus, CurrentActivity);
+        }
+    }
+
+    private async Task OnActivityKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && IsConnected)
+        {
+            await CampaignService.UpdateUserStatusAsync(CampaignId, CurrentStatus, CurrentActivity);
+        }
+    }
+
+    // SignalR Event Handlers
+    private async Task OnUserJoined(string userId, string userName, DateTime timestamp)
+    {
+        RecentMessages.Add(new MessageItem
+        {
+            Message = $"{userName} joined the campaign",
+            Sender = "System",
+            Timestamp = timestamp,
+            Type = "join"
+        });
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnUserLeft(string userId, string userName, DateTime timestamp)
+    {
+        RecentMessages.Add(new MessageItem
+        {
+            Message = $"{userName} left the campaign",
+            Sender = "System",
+            Timestamp = timestamp,
+            Type = "leave"
+        });
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnConnectedUsersUpdated(List<object> users)
+    {
+        // Convert dynamic objects to ConnectedUser objects
+        ConnectedUsers = users.Cast<dynamic>()
+            .Select(u => new ConnectedUser
+            {
+                UserId = u.UserId?.ToString() ?? "",
+                UserName = u.UserName?.ToString() ?? "",
+                Status = u.Status?.ToString() ?? "Online",
+                CurrentActivity = u.CurrentActivity?.ToString() ?? "",
+                LastSeen = DateTime.TryParse(u.LastSeen?.ToString(), out DateTime lastSeen) ? lastSeen : DateTime.Now
+            })
+            .ToList();
+
+        ConnectedUsersCount = ConnectedUsers.Count;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnMessageReceived(object messageObj)
+    {
+        var message = (dynamic)messageObj;
+        RecentMessages.Add(new MessageItem
+        {
+            Message = message.Message?.ToString() ?? "",
+            Sender = message.Sender?.ToString() ?? "Unknown",
+            Timestamp = DateTime.TryParse(message.Timestamp?.ToString(), out DateTime timestamp) ? timestamp : DateTime.Now,
+            Type = message.Type?.ToString() ?? "info"
+        });
+
+        // Keep only last 20 messages
+        if (RecentMessages.Count > 20)
+        {
+            RecentMessages.RemoveAt(0);
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnUserStatusUpdated(string userId, string status, string activity, DateTime timestamp)
+    {
+        var user = ConnectedUsers.FirstOrDefault(u => u.UserId == userId);
+        if (user != null)
+        {
+            user.Status = status;
+            user.CurrentActivity = activity;
+            user.LastSeen = timestamp;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task OnCombatSessionStarted(string combatId, DateTime timestamp)
+    {
+        RecentMessages.Add(new MessageItem
+        {
+            Message = $"Combat session started: {combatId}",
+            Sender = "System",
+            Timestamp = timestamp,
+            Type = "combat"
+        });
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnCombatSessionEnded(string combatId, DateTime timestamp)
+    {
+        RecentMessages.Add(new MessageItem
+        {
+            Message = $"Combat session ended: {combatId}",
+            Sender = "System",
+            Timestamp = timestamp,
+            Type = "combat"
+        });
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // Helper Methods
+    private string GetConnectionStatusClass()
+    {
+        return IsConnected ? "connected" : "disconnected";
+    }
+
+    private string GetUserStatusClass(string status)
+    {
+        return status.ToLower() switch
+        {
+            "online" => "online",
+            "away" => "away",
+            "busy" => "busy",
+            "dnd" => "dnd",
+            _ => "offline"
+        };
+    }
+
+    private string GetTimeAgo(DateTime timestamp)
+    {
+        var diff = DateTime.UtcNow - timestamp.ToUniversalTime();
+        
+        if (diff.TotalMinutes < 1)
+            return "just now";
+        if (diff.TotalMinutes < 60)
+            return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24)
+            return $"{(int)diff.TotalHours}h ago";
+        
+        return timestamp.ToString("MM/dd HH:mm");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        // Unsubscribe from events
+        CampaignService.UserJoined -= OnUserJoined;
+        CampaignService.UserLeft -= OnUserLeft;
+        CampaignService.ConnectedUsersUpdated -= OnConnectedUsersUpdated;
+        CampaignService.MessageReceived -= OnMessageReceived;
+        CampaignService.UserStatusUpdated -= OnUserStatusUpdated;
+        CampaignService.CombatSessionStarted -= OnCombatSessionStarted;
+        CampaignService.CombatSessionEnded -= OnCombatSessionEnded;
+
+        if (IsConnected)
+        {
+            await CampaignService.LeaveCampaignAsync(CampaignId);
+        }
+    }
+
+    // Helper Classes
+    public class ConnectedUser
+    {
+        public string UserId { get; set; } = "";
+        public string UserName { get; set; } = "";
+        public string Status { get; set; } = "Online";
+        public string CurrentActivity { get; set; } = "";
+        public DateTime LastSeen { get; set; }
+    }
+
+    public class MessageItem
+    {
+        public string Message { get; set; } = "";
+        public string Sender { get; set; } = "";
+        public DateTime Timestamp { get; set; }
+        public string Type { get; set; } = "info";
+    }
+}
+
+<style>
+.campaign-status-panel {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 300px;
+    background: white;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 1000;
+    font-size: 0.875rem;
+}
+
+.campaign-status-panel.collapsed {
+    width: auto;
+    min-width: 200px;
+}
+
+.status-header {
+    padding: 12px 16px;
+    background: var(--bs-light);
+    border-bottom: 1px solid var(--bs-border-color);
+    border-radius: 8px 8px 0 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    user-select: none;
+}
+
+.status-header:hover {
+    background: var(--bs-secondary-bg);
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.status-indicator.connected {
+    background: var(--bs-success);
+}
+
+.status-indicator.disconnected {
+    background: var(--bs-danger);
+}
+
+.status-title {
+    font-weight: 500;
+    flex: 1;
+}
+
+.status-content {
+    padding: 16px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.connected-users h6,
+.recent-messages h6 {
+    color: var(--bs-primary);
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.user-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--bs-border-color-translucent);
+}
+
+.user-item:last-child {
+    border-bottom: none;
+}
+
+.user-status {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.user-status.online { background: var(--bs-success); }
+.user-status.away { background: var(--bs-warning); }
+.user-status.busy { background: var(--bs-danger); }
+.user-status.dnd { background: var(--bs-dark); }
+.user-status.offline { background: var(--bs-secondary); }
+
+.user-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.user-name {
+    font-weight: 500;
+}
+
+.user-activity {
+    font-size: 0.75rem;
+    margin-top: 2px;
+}
+
+.message-list {
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+.message-item {
+    padding: 4px 0;
+    border-bottom: 1px solid var(--bs-border-color-translucent);
+}
+
+.message-item:last-child {
+    border-bottom: none;
+}
+
+.message-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.message-text {
+    flex: 1;
+    font-size: 0.8rem;
+    line-height: 1.3;
+}
+
+.message-time {
+    font-size: 0.7rem;
+    flex-shrink: 0;
+}
+
+.message-sender {
+    font-size: 0.7rem;
+    margin-top: 2px;
+}
+
+.status-actions .input-group {
+    margin-bottom: 8px;
+}
+
+/* Mobile responsiveness */
+@@media (max-width: 768px) {
+    .campaign-status-panel {
+        position: fixed;
+        top: auto;
+        bottom: 20px;
+        right: 20px;
+        left: 20px;
+        width: auto;
+    }
+}
+</style>

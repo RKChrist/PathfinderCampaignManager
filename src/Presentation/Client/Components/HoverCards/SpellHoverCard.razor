@@ -1,0 +1,270 @@
+@using PathfinderCampaignManager.Domain.Entities.Pathfinder
+@inject IJSRuntime JSRuntime
+
+<div class="spell-hover-card @(IsVisible ? "visible" : "")" 
+     style="top: @(_position.Y)px; left: @(_position.X)px;"
+     @onmouseenter="OnMouseEnter"
+     @onmouseleave="OnMouseLeave">
+    
+    @if (Spell != null)
+    {
+        <div class="hover-card-header">
+            <div class="spell-title-section">
+                <h5 class="spell-name">@Spell.Name</h5>
+                <div class="spell-meta">
+                    <span class="spell-level badge bg-primary">@GetSpellLevelText()</span>
+                    <span class="spell-school badge bg-secondary">@Spell.School</span>
+                    @if (!string.IsNullOrEmpty(Spell.Rarity) && Spell.Rarity != "Common")
+                    {
+                        <span class="spell-rarity badge bg-warning">@Spell.Rarity</span>
+                    }
+                </div>
+            </div>
+            @if (Spell.Traits.Any())
+            {
+                <div class="spell-traits">
+                    @foreach (var trait in Spell.Traits.Take(4))
+                    {
+                        <span class="trait-badge">@trait</span>
+                    }
+                    @if (Spell.Traits.Count > 4)
+                    {
+                        <span class="trait-badge">+@(Spell.Traits.Count - 4)</span>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="hover-card-body">
+            <div class="spell-casting-info">
+                <div class="casting-detail">
+                    <strong>Cast:</strong> @GetCastingTime()
+                </div>
+                @if (!string.IsNullOrEmpty(Spell.Range))
+                {
+                    <div class="casting-detail">
+                        <strong>Range:</strong> @Spell.Range
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(Spell.Area))
+                {
+                    <div class="casting-detail">
+                        <strong>Area:</strong> @Spell.Area
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(Spell.Targets))
+                {
+                    <div class="casting-detail">
+                        <strong>Targets:</strong> @Spell.Targets
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(Spell.Duration))
+                {
+                    <div class="casting-detail">
+                        <strong>Duration:</strong> @Spell.Duration
+                    </div>
+                }
+            </div>
+
+            <div class="spell-description">
+                @((MarkupString)FormatDescription(Spell.Description))
+            </div>
+
+            @if (Spell.Heightening.Any())
+            {
+                <div class="spell-heightened">
+                    <strong>Heightened:</strong>
+                    @foreach (var heightened in Spell.Heightening.Take(2))
+                    {
+                        <div class="heightened-level">
+                            <strong>@heightened.Level:</strong> @heightened.Effect
+                        </div>
+                    }
+                    @if (Spell.Heightening.Count > 2)
+                    {
+                        <div class="heightened-more">
+                            <em>+@(Spell.Heightening.Count - 2) more heightened effects...</em>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="hover-card-footer">
+            <div class="spell-source">
+                <small class="text-muted">@Spell.Source</small>
+            </div>
+            @if (ShowViewDetailsButton)
+            {
+                <button class="btn btn-sm btn-outline-primary" @onclick="ViewDetails">
+                    <i class="fas fa-info-circle me-1"></i>
+                    View Details
+                </button>
+            }
+        </div>
+    }
+</div>
+
+<style>
+.spell-hover-card {
+    position: fixed;
+    z-index: 9999;
+    background: white;
+    border: 2px solid var(--bs-primary);
+    border-radius: 8px;
+    padding: 1rem;
+    max-width: 400px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+    pointer-events: none;
+    font-size: 0.875rem;
+    line-height: 1.4;
+}
+
+.spell-hover-card.visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+.hover-card-header {
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--bs-border-color);
+}
+
+.spell-title-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.5rem;
+}
+
+.spell-name {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--bs-primary);
+    flex: 1;
+    margin-right: 0.5rem;
+}
+
+.spell-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    align-items: flex-end;
+}
+
+.spell-meta .badge {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.4rem;
+}
+
+.spell-traits {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.trait-badge {
+    display: inline-block;
+    padding: 0.2rem 0.4rem;
+    background: var(--bs-light);
+    color: var(--bs-body-color);
+    border-radius: 0.25rem;
+    font-size: 0.65rem;
+    font-weight: 500;
+    border: 1px solid var(--bs-border-color);
+}
+
+.hover-card-body {
+    margin-bottom: 0.75rem;
+}
+
+.spell-casting-info {
+    margin-bottom: 0.75rem;
+    padding: 0.5rem;
+    background: var(--bs-light);
+    border-radius: 0.25rem;
+}
+
+.casting-detail {
+    margin-bottom: 0.25rem;
+}
+
+.casting-detail:last-child {
+    margin-bottom: 0;
+}
+
+.casting-detail strong {
+    color: var(--bs-primary);
+    margin-right: 0.25rem;
+}
+
+.spell-description {
+    margin-bottom: 0.75rem;
+    color: var(--bs-body-color);
+}
+
+.spell-description p {
+    margin-bottom: 0.5rem;
+}
+
+.spell-description p:last-child {
+    margin-bottom: 0;
+}
+
+.spell-heightened {
+    padding: 0.5rem;
+    background: var(--bs-primary-bg-subtle);
+    border-radius: 0.25rem;
+    border-left: 3px solid var(--bs-primary);
+}
+
+.heightened-level {
+    margin-bottom: 0.25rem;
+}
+
+.heightened-level:last-child {
+    margin-bottom: 0;
+}
+
+.heightened-more {
+    margin-top: 0.25rem;
+    font-size: 0.8rem;
+}
+
+.hover-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--bs-border-color);
+}
+
+.spell-source {
+    flex: 1;
+}
+
+/* Responsive adjustments */
+@*@*@media (max-width: 768px) {
+    .spell-hover-card {
+        max-width: 90vw;
+        font-size: 0.8rem;
+    }
+    
+    .spell-title-section {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .spell-meta {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 0.25rem;
+    }
+}
+</style>

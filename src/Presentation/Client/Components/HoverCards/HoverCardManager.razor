@@ -1,0 +1,156 @@
+@using PathfinderCampaignManager.Domain.Entities.Pathfinder
+@using PathfinderCampaignManager.Domain.Interfaces
+@using PathfinderCampaignManager.Presentation.Client.Services
+@inject PathfinderApiService DataRepository
+@inject IJSRuntime JSRuntime
+@inject HoverCardService Service
+
+<!-- Spell Hover Card -->
+<SpellHoverCard @ref="_spellHoverCard"
+                Spell="_currentSpell"
+                IsVisible="_spellCardVisible"
+                OnViewDetails="OnSpellViewDetails"
+                OnMouseEnter="OnCardMouseEnter"
+                OnMouseLeave="OnCardMouseLeave" />
+
+<!-- Feat Hover Card -->
+<FeatHoverCard @ref="_featHoverCard"
+               Feat="_currentFeat"
+               IsVisible="_featCardVisible"
+               Character="_currentCharacter"
+               OnViewDetails="OnFeatViewDetails"
+               OnMouseEnter="OnCardMouseEnter"
+               OnMouseLeave="OnCardMouseLeave" />
+
+@code {
+    private SpellHoverCard? _spellHoverCard;
+    private FeatHoverCard? _featHoverCard;
+    
+    private PfSpell? _currentSpell;
+    private PfFeat? _currentFeat;
+    private ICalculatedCharacter? _currentCharacter;
+    
+    private bool _spellCardVisible;
+    private bool _featCardVisible;
+    private bool _isMouseOverCard;
+    
+    private Timer? _hideTimer;
+
+    protected override void OnInitialized()
+    {
+        Service.ShowSpellCard += HandleShowSpellCard;
+        Service.ShowFeatCard += HandleShowFeatCard;
+        Service.HideAllCards += HandleHideAllCards;
+        Service.ScheduleHide += HandleScheduleHide;
+    }
+
+    private async Task HandleShowSpellCard(string spellId, double x, double y, ICalculatedCharacter? character = null)
+    {
+        // Hide any existing cards
+        await HandleHideAllCards();
+        
+        // Load spell data
+        var result = await DataRepository.GetSpellAsync(spellId);
+        if (result.IsSuccess)
+        {
+            _currentSpell = result.Value;
+            _currentCharacter = character;
+            _spellCardVisible = true;
+            
+            if (_spellHoverCard != null)
+            {
+                await _spellHoverCard.ShowAtPositionAsync(x, y);
+            }
+            
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleShowFeatCard(string featId, double x, double y, ICalculatedCharacter? character = null)
+    {
+        // Hide any existing cards
+        await HandleHideAllCards();
+        
+        // Load feat data
+        var result = await DataRepository.GetFeatAsync(featId);
+        if (result.IsSuccess)
+        {
+            _currentFeat = result.Value;
+            _currentCharacter = character;
+            _featCardVisible = true;
+            
+            if (_featHoverCard != null)
+            {
+                await _featHoverCard.ShowAtPositionAsync(x, y);
+            }
+            
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleHideAllCards()
+    {
+        _hideTimer?.Dispose();
+        _hideTimer = null;
+        
+        _spellCardVisible = false;
+        _featCardVisible = false;
+        _currentSpell = null;
+        _currentFeat = null;
+        _currentCharacter = null;
+        
+        StateHasChanged();
+    }
+
+    private async Task HandleScheduleHide(int delayMs = 200)
+    {
+        if (_isMouseOverCard)
+            return; // Don't hide if mouse is over card
+        
+        _hideTimer?.Dispose();
+        _hideTimer = new Timer(async _ =>
+        {
+            if (!_isMouseOverCard)
+            {
+                await InvokeAsync(async () =>
+                {
+                    await HandleHideAllCards();
+                });
+            }
+        }, null, delayMs, Timeout.Infinite);
+    }
+
+    private async Task OnCardMouseEnter()
+    {
+        _isMouseOverCard = true;
+        _hideTimer?.Dispose();
+        _hideTimer = null;
+    }
+
+    private async Task OnCardMouseLeave()
+    {
+        _isMouseOverCard = false;
+        await HandleScheduleHide(200);
+    }
+
+    private async Task OnSpellViewDetails(PfSpell spell)
+    {
+        // This would typically navigate to a detailed spell page
+        // For now, we'll just log it
+        Console.WriteLine($"View details for spell: {spell.Name}");
+        await HandleHideAllCards();
+    }
+
+    private async Task OnFeatViewDetails(PfFeat feat)
+    {
+        // This would typically navigate to a detailed feat page
+        // For now, we'll just log it
+        Console.WriteLine($"View details for feat: {feat.Name}");
+        await HandleHideAllCards();
+    }
+
+    public void Dispose()
+    {
+        _hideTimer?.Dispose();
+    }
+}

@@ -1,0 +1,31 @@
+@page "/"
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Pathfinder Campaign Manager</PageTitle>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        // Check if user is authenticated
+        try
+        {
+            var token = await JSRuntime.InvokeAsync<string>("localStorage.getItem", new object[] { "authToken" });
+            if (!string.IsNullOrEmpty(token))
+            {
+                // User is authenticated, redirect to campaigns
+                Navigation.NavigateTo("/campaigns", replace: true);
+            }
+            else
+            {
+                // User is not authenticated, redirect to login
+                Navigation.NavigateTo("/login", replace: true);
+            }
+        }
+        catch
+        {
+            // If there's an error, redirect to login
+            Navigation.NavigateTo("/login", replace: true);
+        }
+    }
+}

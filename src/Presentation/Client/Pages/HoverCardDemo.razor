@@ -1,0 +1,192 @@
+@page "/hover-cards-demo"
+@using PathfinderCampaignManager.Presentation.Client.Components.HoverCards
+@using PathfinderCampaignManager.Domain.Interfaces
+
+<PageTitle>Hover Card Demo</PageTitle>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>
+                    <i class="fas fa-magic me-2"></i>
+                    Hover Card Demo
+                </h2>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item">
+                            <a href="/">Home</a>
+                        </li>
+                        <li class="breadcrumb-item active" aria-current="page">Hover Cards Demo</li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-scroll me-2"></i>
+                        Spell Hover Cards
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="card-text">
+                        Hover over the spell names below to see detailed information in hover cards:
+                    </p>
+                    
+                    <div class="spell-examples">
+                        <div class="example-item">
+                            <strong>Cantrips:</strong>
+                            <SpellLink SpellId="acid-splash" DisplayText="Acid Splash" />,
+                            <SpellLink SpellId="detect-magic" DisplayText="Detect Magic" />,
+                            <SpellLink SpellId="mage-hand" DisplayText="Mage Hand" />
+                        </div>
+                        
+                        <div class="example-item">
+                            <strong>1st Level:</strong>
+                            <SpellLink SpellId="magic-missile" DisplayText="Magic Missile" />,
+                            <SpellLink SpellId="burning-hands" DisplayText="Burning Hands" />,
+                            <SpellLink SpellId="cure-wounds" DisplayText="Cure Wounds" />
+                        </div>
+                        
+                        <div class="example-item">
+                            <strong>3rd Level:</strong>
+                            <SpellLink SpellId="fireball" DisplayText="Fireball" />,
+                            <SpellLink SpellId="lightning-bolt" DisplayText="Lightning Bolt" />,
+                            <SpellLink SpellId="heal" DisplayText="Heal" />
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Tips:</strong> Hover cards show spell level, school, casting time, components, 
+                            range, duration, and a summary of the spell's effects. Click "View Details" for complete information.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-fist-raised me-2"></i>
+                        Feat Hover Cards
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="card-text">
+                        Hover over the feat names below to see detailed information in hover cards:
+                    </p>
+                    
+                    <div class="feat-examples">
+                        <div class="example-item">
+                            <strong>General Feats:</strong>
+                            <FeatLink FeatId="tough" DisplayText="Tough" />,
+                            <FeatLink FeatId="fleet" DisplayText="Fleet" />,
+                            <FeatLink FeatId="incredible-initiative" DisplayText="Incredible Initiative" />
+                        </div>
+                        
+                        <div class="example-item">
+                            <strong>Skill Feats:</strong>
+                            <FeatLink FeatId="assurance" DisplayText="Assurance" />,
+                            <FeatLink FeatId="battle-medicine" DisplayText="Battle Medicine" />,
+                            <FeatLink FeatId="additional-lore" DisplayText="Additional Lore" />
+                        </div>
+                        
+                        <div class="example-item">
+                            <strong>Archetype Feats:</strong>
+                            <FeatLink FeatId="barbarian-dedication" DisplayText="Barbarian Dedication" />,
+                            <FeatLink FeatId="fighter-dedication" DisplayText="Fighter Dedication" />,
+                            <FeatLink FeatId="wizard-dedication" DisplayText="Wizard Dedication" />
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle me-2"></i>
+                            <strong>Features:</strong> Feat hover cards show prerequisites (with validation), 
+                            action costs, traits, effects, and special rules. Green checkmarks indicate met prerequisites.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-cogs me-2"></i>
+                        Interactive Example
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p>
+                        Here's an example of how hover cards work in context, like they would appear in character sheets 
+                        or rule references:
+                    </p>
+                    
+                    <div class="example-text">
+                        <p>
+                            A typical wizard might start with <SpellLink SpellId="detect-magic" DisplayText="Detect Magic" /> 
+                            and <SpellLink SpellId="mage-hand" DisplayText="Mage Hand" /> as cantrips, along with 
+                            <SpellLink SpellId="magic-missile" DisplayText="Magic Missile" /> for reliable damage.
+                        </p>
+                        
+                        <p>
+                            For feats, they might take <FeatLink FeatId="tough" DisplayText="Tough" /> to improve survivability, 
+                            and later consider the <FeatLink FeatId="fighter-dedication" DisplayText="Fighter Dedication" /> 
+                            archetype for better combat abilities.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.example-item {
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: var(--bs-light);
+    border-radius: 0.375rem;
+    border-left: 4px solid var(--bs-primary);
+}
+
+.example-item strong {
+    color: var(--bs-primary);
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.example-text {
+    background: var(--bs-body-bg);
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--bs-border-color);
+    font-size: 1.1rem;
+    line-height: 1.6;
+}
+
+.example-text p:last-child {
+    margin-bottom: 0;
+}
+
+.spell-examples .example-item {
+    border-left-color: var(--bs-primary);
+}
+
+.feat-examples .example-item {
+    border-left-color: var(--bs-success);
+}
+</style>

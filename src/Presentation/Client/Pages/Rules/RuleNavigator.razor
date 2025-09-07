@@ -1,0 +1,1059 @@
+@page "/campaigns/{campaignId:guid}/rules"
+@page "/rule-navigator"
+@inject IJSRuntime JSRuntime
+@inject HttpClient Http
+@using System.Text.Json
+@using PathfinderCampaignManager.Presentation.Client.Components.GameTools
+
+<PageTitle>Rule Navigator</PageTitle>
+
+<div class="rule-navigator">
+    <!-- Omni Search Bar -->
+    <div class="omni-search-container">
+        <div class="omni-search">
+            <div class="search-icon">
+                <i class="fas fa-search"></i>
+            </div>
+            <input type="text" 
+                   class="search-input" 
+                   placeholder="Search rules, conditions, DCs... (⌘K or Ctrl+K)"
+                   @bind="searchQuery"
+                   @bind:event="oninput"
+                   @onkeydown="HandleSearchKeyDown"
+                   @ref="searchInputRef" />
+            
+            @if (!string.IsNullOrEmpty(searchQuery))
+            {
+                <button class="clear-search" @onclick="ClearSearch">
+                    <i class="fas fa-times"></i>
+                </button>
+            }
+        </div>
+        
+        <!-- Search Filters -->
+        <div class="search-filters">
+            <div class="filter-group">
+                <label class="filter-label">Type:</label>
+                <select class="filter-select" @bind="selectedType">
+                    <option value="">All</option>
+                    <option value="condition">Conditions</option>
+                    <option value="skill">Skills</option>
+                    <option value="exploration">Exploration</option>
+                    <option value="hazard">Hazards</option>
+                    <option value="weather">Weather</option>
+                    <option value="dc">DC Tables</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label class="filter-label">Level:</label>
+                <select class="filter-select" @bind="selectedLevel">
+                    <option value="">Any</option>
+                    @for (int i = 1; i <= 20; i++)
+                    {
+                        <option value="@i">Level @i</option>
+                    }
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="navigator-content">
+        <!-- Left Panel: Rule Categories -->
+        <div class="rule-categories">
+            <h3>Quick Access</h3>
+            
+            <div class="category-section">
+                <h4>Combat</h4>
+                <button class="category-button" @onclick="@(() => ShowRuleSet("conditions"))">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Conditions
+                    <span class="count">@GetRuleCount("condition")</span>
+                </button>
+                <button class="category-button" @onclick="@(() => ShowRuleSet("initiative"))">
+                    <i class="fas fa-stopwatch"></i>
+                    Initiative & Actions
+                </button>
+                <button class="category-button" @onclick="@(() => ShowRuleSet("damage"))">
+                    <i class="fas fa-heart-broken"></i>
+                    Damage & Healing
+                </button>
+            </div>
+
+            <div class="category-section">
+                <h4>Exploration</h4>
+                <button class="category-button" @onclick="@(() => ShowRuleSet("skills"))">
+                    <i class="fas fa-dice-d20"></i>
+                    Skill Actions
+                    <span class="count">@GetRuleCount("skill")</span>
+                </button>
+                <button class="category-button" @onclick="@(() => ShowRuleSet("exploration"))">
+                    <i class="fas fa-map"></i>
+                    Exploration Activities
+                    <span class="count">@GetRuleCount("exploration")</span>
+                </button>
+                <button class="category-button" @onclick="@(() => ShowRuleSet("hazards"))">
+                    <i class="fas fa-skull-crossbones"></i>
+                    Hazards
+                    <span class="count">@GetRuleCount("hazard")</span>
+                </button>
+            </div>
+
+            <div class="category-section">
+                <h4>Environment</h4>
+                <button class="category-button" @onclick='() => ShowRuleSet("weather")' data-pinnable="weather">
+                    <i class="fas fa-cloud-sun"></i>
+                    Weather
+                    <button class="pin-button" @onclick:stopPropagation="true" @onclick='() => TogglePin("weather")'>
+                        <i class="@(pinnedPanels.Contains("weather") ? "fas fa-thumbtack" : "far fa-thumbtack")"></i>
+                    </button>
+                </button>
+                <button class="category-button" @onclick='() => ShowRuleSet("stealth")' data-pinnable="stealth">
+                    <i class="fas fa-user-ninja"></i>
+                    Stealth & Detection
+                    <button class="pin-button" @onclick:stopPropagation="true" @onclick='() => TogglePin("stealth")'>
+                        <i class="@(pinnedPanels.Contains("stealth") ? "fas fa-thumbtack" : "far fa-thumbtack")"></i>
+                    </button>
+                </button>
+                <button class="category-button" @onclick='() => ShowRuleSet("relations")' data-pinnable="relations">
+                    <i class="fas fa-users"></i>
+                    NPC Relations
+                    <button class="pin-button" @onclick:stopPropagation="true" @onclick='() => TogglePin("relations")'>
+                        <i class="@(pinnedPanels.Contains("relations") ? "fas fa-thumbtack" : "far fa-thumbtack")"></i>
+                    </button>
+                </button>
+            </div>
+
+            <div class="category-section">
+                <h4>Reference</h4>
+                <button class="category-button" @onclick='() => ShowRuleSet("dc-tables")'>
+                    <i class="fas fa-table"></i>
+                    DC Tables
+                </button>
+                <button class="category-button" @onclick='() => ShowRuleSet("rarity")'>
+                    <i class="fas fa-gem"></i>
+                    Rarity Guidelines
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content: Rule Cards -->
+        <div class="rule-content">
+            @if (isLoading)
+            {
+                <div class="loading-state">
+                    <div class="spinner"></div>
+                    <p>Searching rules...</p>
+                </div>
+            }
+            else if (filteredRules.Any())
+            {
+                <div class="rule-grid">
+                    @foreach (var rule in filteredRules.Take(50)) // Virtualize large lists
+                    {
+                        <div class="rule-card" @key="rule.Id">
+                            <div class="rule-header">
+                                <div class="rule-icon">
+                                    <i class="@GetRuleIcon(rule.Type)"></i>
+                                </div>
+                                <div class="rule-title-section">
+                                    <h4 class="rule-title">@rule.Name</h4>
+                                    <div class="rule-meta">
+                                        <span class="rule-type">@rule.Type</span>
+                                        @if (rule.Level > 0)
+                                        {
+                                            <span class="rule-level">Level @rule.Level</span>
+                                        }
+                                        @if (!string.IsNullOrEmpty(rule.Source))
+                                        {
+                                            <span class="rule-source">@rule.Source</span>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="rule-actions">
+                                    @if (rule.Type == "condition")
+                                    {
+                                        <button class="action-button" @onclick="() => ApplyCondition(rule)" title="Apply to Character">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    }
+                                    @if (rule.DCs.Any())
+                                    {
+                                        <button class="action-button" @onclick="() => CopyDC(rule)" title="Copy DC">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    }
+                                    <button class="action-button" @onclick="() => ToggleFavorite(rule)" title="Favorite">
+                                        <i class="@(favoriteRules.Contains(rule.Id) ? "fas fa-star" : "far fa-star")"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="rule-content-section">
+                                <p class="rule-description">@((MarkupString)rule.Description)</p>
+                                
+                                @if (rule.DCs.Any())
+                                {
+                                    <div class="rule-dcs">
+                                        <strong>DCs:</strong>
+                                        @foreach (var dc in rule.DCs)
+                                        {
+                                            <span class="dc-badge" @onclick="() => CopyDC(dc)">
+                                                @dc.Name: @dc.Value
+                                            </span>
+                                        }
+                                    </div>
+                                }
+
+                                @if (rule.Tags.Any())
+                                {
+                                    <div class="rule-tags">
+                                        @foreach (var tag in rule.Tags)
+                                        {
+                                            <span class="rule-tag" @onclick="() => SearchByTag(tag)">@tag</span>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                @if (filteredRules.Count > 50)
+                {
+                    <div class="load-more">
+                        <button class="btn btn-outline-primary" @onclick="LoadMoreRules">
+                            Load More (@(filteredRules.Count - 50) remaining)
+                        </button>
+                    </div>
+                }
+            }
+            else if (!string.IsNullOrEmpty(searchQuery))
+            {
+                <div class="empty-state">
+                    <i class="fas fa-search fa-3x"></i>
+                    <h3>No results found</h3>
+                    <p>Try adjusting your search terms or filters.</p>
+                </div>
+            }
+            else
+            {
+                <div class="welcome-state">
+                    <i class="fas fa-book-open fa-3x"></i>
+                    <h3>Rule Navigator</h3>
+                    <p>Search for rules, conditions, and reference materials, or browse categories on the left.</p>
+                    <div class="quick-tips">
+                        <p><strong>Tips:</strong></p>
+                        <ul>
+                            <li>Use <kbd>⌘K</kbd> or <kbd>Ctrl+K</kbd> to quickly access search</li>
+                            <li>Click the pin icon to keep panels open</li>
+                            <li>Star rules to add them to favorites</li>
+                        </ul>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Pinned Panels -->
+    @foreach (var pinnedPanel in pinnedPanels)
+    {
+        <div class="pinned-panel @pinnedPanel-panel">
+            <div class="panel-header">
+                <h4>@GetPanelTitle(pinnedPanel)</h4>
+                <button class="close-panel" @onclick="() => TogglePin(pinnedPanel)">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="panel-content">
+                @switch (pinnedPanel)
+                {
+                    case "weather":
+                        <WeatherPanel />
+                        break;
+                    case "stealth":
+                        <StealthPanel />
+                        break;
+                    case "relations":
+                        <RelationsPanel CampaignId="CampaignId" />
+                        break;
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+.rule-navigator {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    position: relative;
+    background: var(--surface-background);
+}
+
+.omni-search-container {
+    background: white;
+    border-bottom: 1px solid var(--border-color);
+    padding: 1rem 2rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.omni-search {
+    position: relative;
+    max-width: 600px;
+    margin: 0 auto;
+    margin-bottom: 1rem;
+}
+
+.search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+    z-index: 2;
+}
+
+.search-input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 3rem;
+    border: 2px solid var(--border-color);
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px var(--primary-color-20);
+}
+
+.clear-search {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 0.25rem;
+}
+
+.clear-search:hover {
+    color: var(--text-primary);
+    background: var(--surface-background);
+}
+
+.search-filters {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.filter-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.filter-select {
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.25rem;
+    background: white;
+    font-size: 0.875rem;
+}
+
+.navigator-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.rule-categories {
+    width: 280px;
+    background: white;
+    border-right: 1px solid var(--border-color);
+    padding: 1.5rem;
+    overflow-y: auto;
+}
+
+.rule-categories h3 {
+    margin: 0 0 1.5rem 0;
+    font-size: 1.125rem;
+    color: var(--text-primary);
+}
+
+.category-section {
+    margin-bottom: 2rem;
+}
+
+.category-section h4 {
+    margin: 0 0 0.75rem 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.category-button {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.75rem;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 0.375rem;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-bottom: 0.25rem;
+    position: relative;
+}
+
+.category-button:hover {
+    background: var(--surface-background);
+    border-color: var(--border-color);
+}
+
+.category-button i {
+    width: 16px;
+    color: var(--text-secondary);
+}
+
+.count {
+    margin-left: auto;
+    font-size: 0.75rem;
+    background: var(--surface-background);
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    color: var(--text-secondary);
+}
+
+.pin-button {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 0.25rem;
+    opacity: 0;
+    transition: all 0.2s ease;
+}
+
+.category-button:hover .pin-button {
+    opacity: 1;
+}
+
+.pin-button:hover {
+    background: var(--surface-background);
+    color: var(--primary-color);
+}
+
+.rule-content {
+    flex: 1;
+    padding: 2rem;
+    overflow-y: auto;
+}
+
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem;
+    color: var(--text-secondary);
+}
+
+.spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--border-color);
+    border-top: 3px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+}
+
+/* CSS animations disabled for compilation */
+
+.rule-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+}
+
+.rule-card {
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    transition: all 0.2s ease;
+    contain: layout style;
+}
+
+.rule-card:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.rule-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.rule-icon {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary-color-20);
+    border-radius: 0.375rem;
+    color: var(--primary-color);
+    flex-shrink: 0;
+}
+
+.rule-title-section {
+    flex: 1;
+}
+
+.rule-title {
+    margin: 0 0 0.25rem 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.rule-meta {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.rule-type,
+.rule-level,
+.rule-source {
+    font-size: 0.75rem;
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    background: var(--surface-background);
+    color: var(--text-secondary);
+}
+
+.rule-actions {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.action-button {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: 1px solid var(--border-color);
+    border-radius: 0.375rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.action-button:hover {
+    background: var(--surface-background);
+    color: var(--text-primary);
+}
+
+.rule-description {
+    color: var(--text-primary);
+    line-height: 1.5;
+    margin-bottom: 1rem;
+}
+
+.rule-dcs {
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+}
+
+.dc-badge {
+    display: inline-block;
+    margin: 0.125rem 0.25rem 0.125rem 0;
+    padding: 0.25rem 0.5rem;
+    background: var(--success-color-20);
+    color: var(--success-color-dark);
+    border-radius: 0.25rem;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.dc-badge:hover {
+    background: var(--success-color-30);
+}
+
+.rule-tags {
+    display: flex;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+}
+
+.rule-tag {
+    display: inline-block;
+    padding: 0.125rem 0.375rem;
+    background: var(--surface-background);
+    border: 1px solid var(--border-color);
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.rule-tag:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.empty-state,
+.welcome-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 4rem;
+    color: var(--text-secondary);
+}
+
+.empty-state i,
+.welcome-state i {
+    margin-bottom: 1rem;
+    color: var(--border-color);
+}
+
+.welcome-state .quick-tips {
+    max-width: 400px;
+    text-align: left;
+    margin-top: 2rem;
+    padding: 1rem;
+    background: var(--surface-background);
+    border-radius: 0.5rem;
+}
+
+.welcome-state kbd {
+    background: var(--surface-background);
+    border: 1px solid var(--border-color);
+    border-radius: 0.25rem;
+    padding: 0.125rem 0.25rem;
+    font-size: 0.75rem;
+}
+
+.pinned-panel {
+    position: fixed;
+    right: 2rem;
+    width: 320px;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+    z-index: 1000;
+    max-height: 60vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.weather-panel {
+    top: 2rem;
+}
+
+.stealth-panel {
+    top: calc(60vh + 3rem);
+}
+
+.relations-panel {
+    top: calc(60vh + 3rem);
+    right: 26rem;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.panel-header h4 {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--text-primary);
+}
+
+.close-panel {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 0.25rem;
+}
+
+.close-panel:hover {
+    background: var(--surface-background);
+    color: var(--text-primary);
+}
+
+.panel-content {
+    flex: 1;
+    padding: 1rem;
+    overflow-y: auto;
+}
+
+/* Performance optimizations */
+.rule-grid {
+    contain: layout;
+}
+
+.rule-card {
+    will-change: transform;
+}
+
+/* Hotkey indicators */
+.hotkey-hint {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    background: rgba(0,0,0,0.8);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    z-index: 1001;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.hotkey-hint.show {
+    opacity: 1;
+}
+</style>
+
+@code {
+    [Parameter] public Guid? CampaignId { get; set; }
+
+    private ElementReference searchInputRef;
+    private string searchQuery = "";
+    private string selectedType = "";
+    private string selectedLevel = "";
+    private bool isLoading = false;
+    
+    private List<RuleEntry> allRules = new();
+    private List<RuleEntry> filteredRules = new();
+    private HashSet<string> favoriteRules = new();
+    private HashSet<string> pinnedPanels = new();
+
+    private Timer? searchTimer;
+    private CancellationTokenSource? searchCancellation;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRules();
+        await SetupHotkeys();
+    }
+
+    private async Task LoadRules()
+    {
+        isLoading = true;
+        
+        try
+        {
+            // In a real implementation, this would load from API with caching
+            allRules = GetMockRules();
+            filteredRules = allRules.Take(50).ToList();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task SetupHotkeys()
+    {
+        await JSRuntime.InvokeVoidAsync("setupRuleNavigatorHotkeys", DotNetObjectReference.Create(this));
+    }
+
+    [JSInvokable]
+    public async Task FocusSearch()
+    {
+        await searchInputRef.FocusAsync();
+    }
+
+    private async Task HandleSearchKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            searchQuery = "";
+            await OnSearchChanged();
+        }
+        else if (e.Key == "Enter" && filteredRules.Any())
+        {
+            // Navigate to first result
+            await ShowRuleDetails(filteredRules.First());
+        }
+    }
+
+    private async Task OnSearchChanged()
+    {
+        searchCancellation?.Cancel();
+        searchCancellation = new CancellationTokenSource();
+
+        searchTimer?.Dispose();
+        searchTimer = new Timer(async _ => await PerformSearch(searchCancellation.Token), null, 150, Timeout.Infinite);
+    }
+
+    private async Task PerformSearch(CancellationToken cancellationToken)
+    {
+        if (cancellationToken.IsCancellationRequested) return;
+
+        await InvokeAsync(async () =>
+        {
+            isLoading = true;
+            StateHasChanged();
+
+            try
+            {
+                // Simulate API delay for demonstration
+                await Task.Delay(50, cancellationToken);
+                
+                if (cancellationToken.IsCancellationRequested) return;
+
+                var query = searchQuery.ToLowerInvariant();
+                var filtered = allRules.AsEnumerable();
+
+                // Apply text search
+                if (!string.IsNullOrEmpty(query))
+                {
+                    filtered = filtered.Where(r =>
+                        r.Name.ToLowerInvariant().Contains(query) ||
+                        r.Description.ToLowerInvariant().Contains(query) ||
+                        r.Tags.Any(t => t.ToLowerInvariant().Contains(query))
+                    );
+                }
+
+                // Apply type filter
+                if (!string.IsNullOrEmpty(selectedType))
+                {
+                    filtered = filtered.Where(r => r.Type == selectedType);
+                }
+
+                // Apply level filter
+                if (!string.IsNullOrEmpty(selectedLevel) && int.TryParse(selectedLevel, out var level))
+                {
+                    filtered = filtered.Where(r => r.Level == level);
+                }
+
+                // Sort by relevance (favorites first, then by name)
+                filtered = filtered.OrderByDescending(r => favoriteRules.Contains(r.Id))
+                                 .ThenBy(r => r.Name);
+
+                filteredRules = filtered.ToList();
+            }
+            finally
+            {
+                isLoading = false;
+                StateHasChanged();
+            }
+        });
+    }
+
+    private async Task OnFilterChanged()
+    {
+        await OnSearchChanged();
+    }
+
+    private void ClearSearch()
+    {
+        searchQuery = "";
+        _ = OnSearchChanged();
+    }
+
+    private async Task ShowRuleSet(string ruleSet)
+    {
+        selectedType = ruleSet;
+        searchQuery = "";
+        await OnSearchChanged();
+    }
+
+    private void ToggleFavorite(RuleEntry rule)
+    {
+        if (favoriteRules.Contains(rule.Id))
+            favoriteRules.Remove(rule.Id);
+        else
+            favoriteRules.Add(rule.Id);
+    }
+
+    private void TogglePin(string panelType)
+    {
+        if (pinnedPanels.Contains(panelType))
+            pinnedPanels.Remove(panelType);
+        else
+            pinnedPanels.Add(panelType);
+    }
+
+    private async Task CopyDC(RuleEntry rule)
+    {
+        if (rule.DCs.Any())
+        {
+            var dcText = string.Join(", ", rule.DCs.Select(dc => $"{dc.Name}: {dc.Value}"));
+            await JSRuntime.InvokeVoidAsync("copyToClipboard", dcText);
+            await ShowToast($"Copied: {dcText}");
+        }
+    }
+
+    private async Task CopyDC(DCEntry dc)
+    {
+        var dcText = $"{dc.Name}: {dc.Value}";
+        await JSRuntime.InvokeVoidAsync("copyToClipboard", dcText);
+        await ShowToast($"Copied: {dcText}");
+    }
+
+    private async Task ApplyCondition(RuleEntry rule)
+    {
+        // In a real implementation, this would show a modal to select target character
+        await ShowToast($"Applied condition: {rule.Name}");
+    }
+
+    private void SearchByTag(string tag)
+    {
+        searchQuery = tag;
+        _ = OnSearchChanged();
+    }
+
+    private async Task ShowRuleDetails(RuleEntry rule)
+    {
+        // Show detailed rule modal or navigate to rule page
+        await JSRuntime.InvokeVoidAsync("showRuleModal", rule.Id);
+    }
+
+    private void LoadMoreRules()
+    {
+        // Load more rules (virtualization)
+        var remaining = filteredRules.Skip(50);
+        filteredRules.AddRange(remaining.Take(50));
+    }
+
+    private async Task ShowToast(string message)
+    {
+        await JSRuntime.InvokeVoidAsync("showToast", message);
+    }
+
+    private string GetRuleIcon(string type)
+    {
+        return type switch
+        {
+            "condition" => "fas fa-exclamation-triangle",
+            "skill" => "fas fa-dice-d20",
+            "exploration" => "fas fa-map",
+            "hazard" => "fas fa-skull-crossbones",
+            "weather" => "fas fa-cloud-sun",
+            "dc" => "fas fa-table",
+            _ => "fas fa-book"
+        };
+    }
+
+    private int GetRuleCount(string type)
+    {
+        return allRules.Count(r => r.Type == type);
+    }
+
+    private string GetPanelTitle(string panelType)
+    {
+        return panelType switch
+        {
+            "weather" => "Weather Conditions",
+            "stealth" => "Stealth & Detection",
+            "relations" => "NPC Relations",
+            _ => panelType
+        };
+    }
+
+    private List<RuleEntry> GetMockRules()
+    {
+        return new List<RuleEntry>
+        {
+            new("blinded", "Blinded", "condition", "You can't see. All normal terrain is difficult terrain to you. You can't detect anything using vision. You automatically critically fail Perception checks that require you to be able to see, and if vision is your only precise sense, you take a -4 status penalty to Perception checks. You are immune to visual effects. Blinded overrides dazzled.", 0, new[] {"visual", "senses"}, new DCEntry[0]),
+            
+            new("climb", "Climb", "skill", "You move up, down, or across an incline. Unless it's particularly easy, you must attempt an Athletics check. The GM determines the DC based on the nature of the incline and environmental circumstances.", 0, new[] {"athletics", "movement"}, new[] { new DCEntry("Untrained", 15), new DCEntry("Trained", 20), new DCEntry("Expert", 25) }),
+            
+            new("avoid-notice", "Avoid Notice", "exploration", "You attempt a Stealth check to avoid notice while traveling at half your travel Speed. If you have the Swift Sneak feat, you can move at your full travel Speed. You can attempt to Avoid Notice only if you have cover or greater cover.", 0, new[] {"stealth", "exploration"}, new DCEntry[0]),
+            
+            new("pit-trap", "Concealed Pit", "hazard", "A 10-foot-square pit opens when a creature steps on its pressure plate.", 2, new[] {"trap", "mechanical"}, new[] { new DCEntry("Detection", 18), new DCEntry("Disable", 15) }),
+            
+            new("heavy-rain", "Heavy Rain", "weather", "Heavy rain reduces visibility, making all creatures and objects beyond 60 feet concealed. Creatures take a -2 circumstance penalty to Perception checks that rely on sound.", 0, new[] {"weather", "concealment"}, new DCEntry[0]),
+        };
+    }
+
+    public class RuleEntry
+    {
+        public string Id { get; set; }
+        public string Name { get; set; }
+        public string Type { get; set; }
+        public string Description { get; set; }
+        public int Level { get; set; }
+        public string[] Tags { get; set; }
+        public DCEntry[] DCs { get; set; }
+        public string Source { get; set; } = "Core Rulebook";
+
+        public RuleEntry(string id, string name, string type, string description, int level, string[] tags, DCEntry[] dcs)
+        {
+            Id = id;
+            Name = name;
+            Type = type;
+            Description = description;
+            Level = level;
+            Tags = tags;
+            DCs = dcs;
+        }
+    }
+
+    public class DCEntry
+    {
+        public string Name { get; set; }
+        public int Value { get; set; }
+
+        public DCEntry(string name, int value)
+        {
+            Name = name;
+            Value = value;
+        }
+    }
+}
+
+public static class StringExtensions
+{
+    public static string ToTitleCase(this string input)
+    {
+        if (string.IsNullOrEmpty(input)) return input;
+        return char.ToUpper(input[0]) + input.Substring(1);
+    }
+}

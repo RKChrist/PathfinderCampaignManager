@@ -1,0 +1,363 @@
+@page "/combat/{encounterId:guid}"
+@using System.ComponentModel.DataAnnotations
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Combat Tracker</PageTitle>
+
+<div class="container-fluid">
+    @if (encounter != null)
+    {
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2>
+                    <i class="fas fa-swords me-2"></i>
+                    @encounter.Name
+                </h2>
+                <div class="d-flex align-items-center gap-3">
+                    <span class="badge @(encounter.IsActive ? "bg-success" : "bg-secondary")">
+                        @(encounter.IsActive ? "Active" : "Inactive")
+                    </span>
+                    @if (encounter.IsActive)
+                    {
+                        <span class="text-muted">Round @encounter.CurrentRound</span>
+                    }
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                @if (!encounter.IsActive)
+                {
+                    <button class="btn btn-success" @onclick="StartEncounter">
+                        <i class="fas fa-play me-1"></i>
+                        Start Encounter
+                    </button>
+                }
+                else
+                {
+                    <button class="btn btn-primary" @onclick="NextTurn">
+                        <i class="fas fa-forward me-1"></i>
+                        Next Turn
+                    </button>
+                    <button class="btn btn-warning" @onclick="EndEncounter">
+                        <i class="fas fa-stop me-1"></i>
+                        End Encounter
+                    </button>
+                }
+                <button class="btn btn-outline-secondary" @onclick="ShowAddCombatantModal">
+                    <i class="fas fa-plus me-1"></i>
+                    Add Combatant
+                </button>
+            </div>
+        </div>
+
+        @if (encounter.Combatants.Any())
+        {
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Initiative Order</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    @foreach (var combatant in encounter.Combatants.OrderByDescending(c => c.Initiative))
+                    {
+                        var isCurrentTurn = encounter.IsActive && combatant.TurnOrder == encounter.CurrentTurn;
+                        <div class="list-group-item @(isCurrentTurn ? "list-group-item-primary" : "")">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center">
+                                    @if (isCurrentTurn)
+                                    {
+                                        <i class="fas fa-arrow-right text-primary me-2"></i>
+                                    }
+                                    <div>
+                                        <h6 class="mb-1">@combatant.Name</h6>
+                                        <small class="text-muted">
+                                            Initiative: @combatant.Initiative
+                                            @if (combatant.CharacterId.HasValue)
+                                            {
+                                                <span class="badge bg-info ms-1">PC</span>
+                                            }
+                                            else if (combatant.NpcMonsterId.HasValue)
+                                            {
+                                                <span class="badge bg-warning ms-1">NPC</span>
+                                            }
+                                        </small>
+                                    </div>
+                                </div>
+                                <div>
+                                    <button class="btn btn-sm btn-outline-danger" 
+                                            @onclick="() => RemoveCombatant(combatant.Id)">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5">
+                <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">No Combatants</h4>
+                <p class="text-muted">Add characters and NPCs to start the encounter.</p>
+                <button class="btn btn-primary" @onclick="ShowAddCombatantModal">
+                    <i class="fas fa-plus me-1"></i>
+                    Add First Combatant
+                </button>
+            </div>
+        }
+    }
+    else if (isLoading)
+    {
+        <div class="d-flex justify-content-center p-5">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading encounter...</span>
+            </div>
+        </div>
+    }
+    
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle me-1"></i>
+            @errorMessage
+        </div>
+    }
+</div>
+
+<!-- Add Combatant Modal -->
+@if (showAddCombatantModal)
+{
+    <div class="modal fade show d-block" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Combatant</h5>
+                    <button type="button" class="btn-close" @onclick="HideAddCombatantModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="@addCombatantModel" OnValidSubmit="@AddCombatant">
+                        <DataAnnotationsValidator />
+                        
+                        <div class="mb-3">
+                            <label for="combatantName" class="form-label">Name *</label>
+                            <InputText id="combatantName" @bind-Value="addCombatantModel.Name" class="form-control" />
+                            <ValidationMessage For="@(() => addCombatantModel.Name)" class="text-danger" />
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="initiative" class="form-label">Initiative *</label>
+                            <InputNumber id="initiative" @bind-Value="addCombatantModel.Initiative" class="form-control" />
+                            <ValidationMessage For="@(() => addCombatantModel.Initiative)" class="text-danger" />
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-secondary" @onclick="HideAddCombatantModal">
+                                Cancel
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                Add Combatant
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    [Parameter] public Guid EncounterId { get; set; }
+
+    private EncounterResponse? encounter;
+    private bool isLoading = true;
+    private string errorMessage = string.Empty;
+    private bool showAddCombatantModal = false;
+    private AddCombatantModel addCombatantModel = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadEncounter();
+    }
+
+    private async Task LoadEncounter()
+    {
+        isLoading = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            encounter = await Http.GetFromJsonAsync<EncounterResponse>($"api/combat/encounters/{EncounterId}");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load encounter: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task StartEncounter()
+    {
+        try
+        {
+            var response = await Http.PutAsync($"api/combat/encounters/{EncounterId}/start", null);
+            if (response.IsSuccessStatusCode)
+            {
+                await LoadEncounter();
+            }
+            else
+            {
+                errorMessage = "Failed to start encounter";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error starting encounter: {ex.Message}";
+        }
+    }
+
+    private async Task EndEncounter()
+    {
+        try
+        {
+            var response = await Http.PutAsync($"api/combat/encounters/{EncounterId}/end", null);
+            if (response.IsSuccessStatusCode)
+            {
+                await LoadEncounter();
+            }
+            else
+            {
+                errorMessage = "Failed to end encounter";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error ending encounter: {ex.Message}";
+        }
+    }
+
+    private async Task NextTurn()
+    {
+        try
+        {
+            var response = await Http.PutAsync($"api/combat/encounters/{EncounterId}/next-turn", null);
+            if (response.IsSuccessStatusCode)
+            {
+                await LoadEncounter();
+            }
+            else
+            {
+                errorMessage = "Failed to advance turn";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error advancing turn: {ex.Message}";
+        }
+    }
+
+    private async Task AddCombatant()
+    {
+        try
+        {
+            var request = new AddCombatantRequest(
+                addCombatantModel.Name!,
+                addCombatantModel.Initiative,
+                null, // CharacterId - would be selected from dropdown in real app
+                null  // NpcMonsterId - would be selected from dropdown in real app
+            );
+
+            var response = await Http.PostAsJsonAsync($"api/combat/encounters/{EncounterId}/combatants", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                HideAddCombatantModal();
+                addCombatantModel = new();
+                await LoadEncounter();
+            }
+            else
+            {
+                errorMessage = "Failed to add combatant";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error adding combatant: {ex.Message}";
+        }
+    }
+
+    private async Task RemoveCombatant(Guid combatantId)
+    {
+        try
+        {
+            var response = await Http.DeleteAsync($"api/combat/encounters/{EncounterId}/combatants/{combatantId}");
+            
+            if (response.IsSuccessStatusCode)
+            {
+                await LoadEncounter();
+            }
+            else
+            {
+                errorMessage = "Failed to remove combatant";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error removing combatant: {ex.Message}";
+        }
+    }
+
+    private void ShowAddCombatantModal()
+    {
+        showAddCombatantModal = true;
+    }
+
+    private void HideAddCombatantModal()
+    {
+        showAddCombatantModal = false;
+        addCombatantModel = new();
+    }
+
+    public class AddCombatantModel
+    {
+        [Required(ErrorMessage = "Name is required")]
+        public string? Name { get; set; }
+
+        [Required(ErrorMessage = "Initiative is required")]
+        [Range(-10, 50, ErrorMessage = "Initiative must be between -10 and 50")]
+        public int Initiative { get; set; }
+    }
+
+    public record EncounterResponse(
+        Guid Id,
+        string Name,
+        Guid SessionId,
+        string? Description,
+        bool IsActive,
+        int CurrentRound,
+        int CurrentTurn,
+        DateTime CreatedAt,
+        DateTime? UpdatedAt,
+        IEnumerable<CombatantResponse> Combatants
+    );
+
+    public record CombatantResponse(
+        Guid Id,
+        string Name,
+        int Initiative,
+        Guid? CharacterId,
+        Guid? NpcMonsterId,
+        int TurnOrder
+    );
+
+    public record AddCombatantRequest(
+        string Name,
+        int Initiative,
+        Guid? CharacterId = null,
+        Guid? NpcMonsterId = null
+    );
+}

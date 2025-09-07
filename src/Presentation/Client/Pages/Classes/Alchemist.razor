@@ -1,0 +1,198 @@
+@page "/classes/alchemist"
+@using PathfinderCampaignManager.Domain.Entities.Auth
+@using PathfinderCampaignManager.Presentation.Client.Attributes
+@using PathfinderCampaignManager.Presentation.Client.Components.Auth
+
+<PageTitle>Alchemist - Pathfinder Campaign Manager</PageTitle>
+
+<div class="class-page alchemist-page">
+    <div class="class-header">
+        <h1 class="class-title">
+            <i class="class-icon fas fa-flask"></i>
+            Alchemist
+        </h1>
+        <p class="class-subtitle">There's no sight more beautiful to you than a strange brew bubbling in a beaker</p>
+    </div>
+
+    <div class="class-content">
+        <!-- Basic Information - Visible to All -->
+        <div class="class-basics card mb-4">
+            <div class="card-header">
+                <h3>Class Overview</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Key Ability:</strong> Intelligence</p>
+                        <p><strong>Hit Points:</strong> 8 + Con modifier</p>
+                        <p><strong>Primary Saves:</strong> Fortitude, Reflex</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Skill Increases:</strong> 3 + Int modifier</p>
+                        <p><strong>Weapon Prof:</strong> Simple weapons, alchemical bombs</p>
+                        <p><strong>Armor Prof:</strong> Light armor</p>
+                    </div>
+                </div>
+                <p class="class-description mt-3">
+                    You consume your various creations with abandon. You study alchemical formulas and 
+                    create powerful concoctions that support your allies or harm your foes.
+                </p>
+            </div>
+        </div>
+
+        <!-- Class Features - Player Visible -->
+        <AuthorizedView RequiredRole="UserRole.Player">
+            <div class="class-features card mb-4">
+                <div class="card-header">
+                    <h3>Key Class Features</h3>
+                </div>
+                <div class="card-body">
+                    <div class="feature mb-3">
+                        <h5>Alchemy</h5>
+                        <p>You understand the complex interactions of natural and unnatural substances and can formulate alchemical items to aid you in your adventures.</p>
+                    </div>
+                    <div class="feature mb-3">
+                        <h5>Infused Reagents</h5>
+                        <p>You infuse reagents with your own alchemical essence, allowing you to create alchemical items at no cost.</p>
+                    </div>
+                    <div class="feature mb-3">
+                        <h5>Research Fields</h5>
+                        <p>Your inquiries into the alchemical arts have led you to focus on a particular field of research.</p>
+                        <ul>
+                            <li><strong>Bomber:</strong> You specialize in explosives and other violent alchemical reactions.</li>
+                            <li><strong>Chirurgeon:</strong> You concentrate on healing others with alchemy.</li>
+                            <li><strong>Mutagenist:</strong> You focus on bizarre mutagenic transformations.</li>
+                            <li><strong>Toxicologist:</strong> You specialize in poisons and their cures.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </AuthorizedView>
+
+        <!-- Character Building Guide - DM and Above -->
+        <AuthorizedView RequiredRole="UserRole.DM">
+            <div class="dm-notes card mb-4">
+                <div class="card-header bg-warning">
+                    <h3><i class="fas fa-eye"></i> DM Notes</h3>
+                </div>
+                <div class="card-body">
+                    <h5>Character Building Recommendations</h5>
+                    <ul>
+                        <li><strong>Ability Scores:</strong> Prioritize Intelligence, then Constitution for survivability</li>
+                        <li><strong>Skills:</strong> Crafting (essential), Medicine, Arcana, Nature are strong choices</li>
+                        <li><strong>Early Feats:</strong> Quick Bomber, Poison Resistance, or research field-specific feats</li>
+                        <li><strong>Equipment:</strong> Alchemist's tools, formula book, and crafting supplies</li>
+                    </ul>
+                    
+                    <h5>Roleplay Hooks</h5>
+                    <ul>
+                        <li>Obsessed researcher seeking rare ingredients</li>
+                        <li>Former apprentice to a famous alchemist</li>
+                        <li>Street chemist who learned through trial and error</li>
+                        <li>Academic who studies the theoretical aspects of alchemy</li>
+                    </ul>
+                </div>
+            </div>
+        </AuthorizedView>
+
+        <!-- Advanced Mechanics - Admin Only -->
+        <AuthorizedView RequiredRole="UserRole.Admin">
+            <div class="admin-content card mb-4">
+                <div class="card-header bg-danger text-white">
+                    <h3><i class="fas fa-cog"></i> Admin Content</h3>
+                </div>
+                <div class="card-body">
+                    <h5>Advanced Alchemist Mechanics</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Formula Scaling</h6>
+                            <ul>
+                                <li>Daily reagents: Level + Int modifier</li>
+                                <li>Formula known: 4 + Int modifier (1st level)</li>
+                                <li>Advanced alchemy: Level/2 formulas per day</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Bomb Damage Progression</h6>
+                            <ul>
+                                <li>Level 1: 1d6 + Int modifier</li>
+                                <li>Level 3: 2d6 + Int modifier</li>
+                                <li>Level 5: 3d6 + Int modifier</li>
+                                <li>And so on...</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <h6>Common Player Questions</h6>
+                    <div class="alert alert-info">
+                        <ul class="mb-0">
+                            <li>Can I use Quick Alchemy in combat? Yes, it's a single action</li>
+                            <li>Do bombs have splash damage? Yes, always 1 point + int mod to adjacent creatures</li>
+                            <li>How many formulas can I prepare? Equal to your advanced alchemy class feature</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </AuthorizedView>
+
+        <!-- Character Creation Tools -->
+        <div class="character-tools card">
+            <div class="card-header">
+                <h3>Character Creation</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <a href="/character-wizard?class=alchemist" class="btn btn-primary btn-lg w-100 mb-2">
+                            <i class="fas fa-magic"></i> Create Alchemist Character
+                        </a>
+                    </div>
+                    <div class="col-md-6">
+                        <a href="/classes" class="btn btn-outline-secondary btn-lg w-100 mb-2">
+                            <i class="fas fa-list"></i> View All Classes
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .alchemist-page {
+        background: linear-gradient(135deg, #e8f5e8 0%, #f0f8ff 100%);
+        min-height: 100vh;
+        padding: 20px;
+    }
+
+    .class-header {
+        text-align: center;
+        margin-bottom: 2rem;
+        background: white;
+        padding: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .class-title {
+        color: #2d5a2d;
+        font-size: 3rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .class-icon {
+        color: #4a7c4a;
+        margin-right: 15px;
+    }
+
+    .class-subtitle {
+        color: #666;
+        font-style: italic;
+        font-size: 1.2rem;
+    }
+
+    .feature h5 {
+        color: #2d5a2d;
+        font-weight: bold;
+    }
+</style>

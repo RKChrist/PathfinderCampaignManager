@@ -1,0 +1,361 @@
+.character-builder {
+    min-height: 100vh;
+    background: #f8f9fa;
+}
+
+.build-panel {
+    background: white;
+    border-right: 1px solid #dee2e6;
+    min-height: 100vh;
+    padding: 1rem;
+}
+
+.build-steps h4 {
+    margin-bottom: 1.5rem;
+    color: #495057;
+    font-weight: 600;
+}
+
+.step-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.step {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: #f8f9fa;
+    border: 2px solid transparent;
+}
+
+.step:hover {
+    background: #e9ecef;
+    transform: translateX(2px);
+}
+
+.step.active {
+    background: #667eea;
+    color: white;
+    border-color: #5a6fd8;
+}
+
+.step-number {
+    width: 28px;
+    height: 28px;
+    background: #6c757d;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-right: 0.75rem;
+}
+
+.step.active .step-number {
+    background: white;
+    color: #667eea;
+}
+
+.step-title {
+    font-weight: 500;
+}
+
+.step-content {
+    padding: 2rem;
+    background: white;
+    min-height: 100vh;
+}
+
+.character-summary {
+    background: #f8f9fa;
+    padding: 1rem;
+    min-height: 100vh;
+}
+
+.summary-card {
+    background: white;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    position: sticky;
+    top: 1rem;
+}
+
+.summary-card h4 {
+    margin-bottom: 1rem;
+    color: #495057;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 0.5rem;
+}
+
+.character-name {
+    margin-bottom: 1.5rem;
+}
+
+.character-name label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.summary-section {
+    margin-bottom: 1.5rem;
+}
+
+.summary-section h6 {
+    color: #667eea;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    text-transform: uppercase;
+    font-size: 0.875rem;
+    letter-spacing: 0.5px;
+}
+
+.summary-section p {
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.data-info {
+    background: #e3f2fd;
+    border: 1px solid #bbdefb;
+    border-radius: 0.25rem;
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.data-info p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #1976d2;
+    font-weight: 500;
+}
+
+.ancestry-grid, .background-grid, .class-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.ancestry-card, .background-card, .class-card {
+    border: 2px solid #dee2e6;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: white;
+}
+
+.ancestry-card:hover, .background-card:hover, .class-card:hover {
+    border-color: #667eea;
+    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.1);
+    transform: translateY(-2px);
+}
+
+.ancestry-card.selected, .background-card.selected, .class-card.selected {
+    border-color: #667eea;
+    background: #f8f9ff;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.ancestry-card h5, .background-card h5, .class-card h5 {
+    color: #667eea;
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+}
+
+.ancestry-card p, .background-card p, .class-card p {
+    color: #6c757d;
+    margin-bottom: 0.75rem;
+    line-height: 1.5;
+}
+
+.class-stats {
+    font-size: 0.875rem;
+    color: #495057;
+}
+
+.traits {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+}
+
+.trait-badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-weight: 500;
+}
+
+.trait-badge.ability-boost {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.trait-badge.ability-flaw {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.ability-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.ability-score {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    text-align: center;
+}
+
+.ability-score label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: #495057;
+}
+
+.ability-score input {
+    margin-bottom: 0.5rem;
+    text-align: center;
+    font-weight: 600;
+}
+
+.ability-score small {
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.skill-list {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.skill-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #f8f9fa;
+    gap: 1rem;
+}
+
+.skill-row:last-child {
+    border-bottom: none;
+}
+
+.skill-row:hover {
+    background: #f8f9fa;
+}
+
+.skill-name {
+    font-weight: 500;
+    color: #495057;
+}
+
+.skill-ability {
+    text-align: center;
+    font-size: 0.875rem;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.feat-categories {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.feat-category h5 {
+    color: #667eea;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid #e9ecef;
+    padding-bottom: 0.5rem;
+}
+
+.feat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.feat-card {
+    border: 2px solid #dee2e6;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: white;
+}
+
+.feat-card:hover {
+    border-color: #667eea;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+}
+
+.feat-card.selected {
+    border-color: #667eea;
+    background: #f8f9ff;
+}
+
+.feat-card h6 {
+    color: #667eea;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.feat-card p {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+}
+
+.step-navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid #dee2e6;
+}
+
+.step-navigation .btn {
+    padding: 0.75rem 2rem;
+    font-weight: 500;
+}
+
+.ability-method {
+    background: #f8f9fa;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.ability-method h5 {
+    margin-bottom: 0.75rem;
+    color: #495057;
+}

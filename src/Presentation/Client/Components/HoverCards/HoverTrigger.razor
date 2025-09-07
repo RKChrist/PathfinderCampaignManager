@@ -1,0 +1,127 @@
+@using Microsoft.JSInterop
+@inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
+
+<span class="hover-trigger @CssClass"
+      @onmouseenter="OnMouseEnterAsync"
+      @onmouseleave="OnMouseLeaveAsync"
+      @onclick="OnClickAsync">
+    @ChildContent
+</span>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string CssClass { get; set; } = "";
+    [Parameter] public int DelayMs { get; set; } = 300;
+    [Parameter] public EventCallback<MouseEventArgs> OnHoverStart { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> OnHoverEnd { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+    [Parameter] public bool PreventClickPropagation { get; set; } = false;
+
+    private Timer? _hoverTimer;
+    private bool _isHovering;
+    private DotNetObjectReference<HoverTrigger>? _objRef;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _objRef = DotNetObjectReference.Create(this);
+    }
+
+    private async Task OnMouseEnterAsync(MouseEventArgs e)
+    {
+        _isHovering = true;
+        
+        // Cancel any existing timer
+        _hoverTimer?.Dispose();
+        
+        // Start delay timer
+        _hoverTimer = new Timer(async _ =>
+        {
+            if (_isHovering)
+            {
+                await InvokeAsync(async () =>
+                {
+                    await OnHoverStart.InvokeAsync(e);
+                });
+            }
+        }, null, DelayMs, Timeout.Infinite);
+    }
+
+    private async Task OnMouseLeaveAsync(MouseEventArgs e)
+    {
+        _isHovering = false;
+        
+        // Cancel timer
+        _hoverTimer?.Dispose();
+        _hoverTimer = null;
+        
+        await OnHoverEnd.InvokeAsync(e);
+    }
+
+    private async Task OnClickAsync(MouseEventArgs e)
+    {
+        if (PreventClickPropagation)
+        {
+            e.Equals(e); // Prevent warning about unused parameter
+        }
+        
+        await OnClick.InvokeAsync(e);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _hoverTimer?.Dispose();
+        _objRef?.Dispose();
+    }
+}
+
+<style>
+.hover-trigger {
+    cursor: pointer;
+    color: var(--bs-primary);
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-underline-offset: 2px;
+    transition: color 0.2s ease;
+}
+
+.hover-trigger:hover {
+    color: var(--bs-primary-emphasis);
+    text-decoration-style: solid;
+}
+
+.hover-trigger.feat-trigger {
+    color: var(--bs-success);
+}
+
+.hover-trigger.feat-trigger:hover {
+    color: var(--bs-success-emphasis);
+}
+
+.hover-trigger.spell-trigger {
+    color: var(--bs-primary);
+}
+
+.hover-trigger.spell-trigger:hover {
+    color: var(--bs-primary-emphasis);
+}
+
+.hover-trigger.archetype-trigger {
+    color: var(--bs-info);
+}
+
+.hover-trigger.archetype-trigger:hover {
+    color: var(--bs-info-emphasis);
+}
+
+.hover-trigger.disabled {
+    color: var(--bs-secondary);
+    cursor: not-allowed;
+    text-decoration: none;
+}
+
+.hover-trigger.disabled:hover {
+    color: var(--bs-secondary);
+    text-decoration: none;
+}
+</style>

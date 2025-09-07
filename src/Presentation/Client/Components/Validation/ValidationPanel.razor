@@ -1,0 +1,147 @@
+@using PathfinderCampaignManager.Presentation.Client.Services
+@using PathfinderCampaignManager.Domain.Validation
+@using PathfinderCampaignManager.Domain.Interfaces
+@inject ValidationClientService ValidationService
+
+<div class="validation-panel @(IsExpanded ? "expanded" : "collapsed")">
+    <div class="validation-panel-header" @onclick="ToggleExpanded">
+        <div class="validation-status-indicator">
+            @if (IsLoading)
+            {
+                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            }
+            else if (ValidationReport != null)
+            {
+                <i class="fas @GetStatusIcon() @GetStatusColor()"></i>
+            }
+            else
+            {
+                <i class="fas fa-question-circle text-muted"></i>
+            }
+        </div>
+        <span class="validation-title">
+            @if (ValidationReport != null)
+            {
+                <span>@GetStatusText() (@ValidationReport.TotalIssueCount issues)</span>
+            }
+            else
+            {
+                <span>@Title</span>
+            }
+        </span>
+        <i class="fas @(IsExpanded ? "fa-chevron-down" : "fa-chevron-up") ms-auto"></i>
+    </div>
+
+    @if (IsExpanded)
+    {
+        <div class="validation-panel-content">
+            @if (ValidationReport != null)
+            {
+                <ValidationReportDisplay Report="ValidationReport" Compact="true" />
+            }
+            else if (!string.IsNullOrEmpty(ErrorMessage))
+            {
+                <div class="alert alert-danger mb-0">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    @ErrorMessage
+                </div>
+            }
+            else
+            {
+                <div class="text-muted text-center py-3">
+                    <i class="fas fa-info-circle me-2"></i>
+                    No validation performed yet.
+                </div>
+            }
+
+            <div class="validation-panel-actions mt-3">
+                <button type="button" class="btn btn-outline-primary btn-sm" @onclick="RefreshValidation" disabled="@IsLoading">
+                    <i class="fas fa-sync-alt me-1"></i>
+                    Refresh
+                </button>
+                
+                @if (ShowAutoValidate)
+                {
+                    <div class="form-check form-switch ms-3">
+                        <input class="form-check-input" type="checkbox" id="autoValidate" @bind="AutoValidate">
+                        <label class="form-check-label" for="autoValidate">Auto-validate</label>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+.validation-panel {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 6px;
+    background: white;
+    font-size: 0.875rem;
+}
+
+.validation-panel.collapsed {
+    border-bottom: none;
+}
+
+.validation-panel-header {
+    padding: 8px 12px;
+    background: var(--bs-light);
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    user-select: none;
+    border-bottom: 1px solid var(--bs-border-color);
+}
+
+.validation-panel.collapsed .validation-panel-header {
+    border-radius: 6px;
+    border-bottom: none;
+}
+
+.validation-panel-header:hover {
+    background: var(--bs-secondary-bg);
+}
+
+.validation-status-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+}
+
+.validation-title {
+    font-weight: 500;
+    flex: 1;
+    font-size: 0.85rem;
+}
+
+.validation-panel-content {
+    padding: 12px;
+}
+
+.validation-panel-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 12px;
+    border-top: 1px solid var(--bs-border-color-translucent);
+}
+
+.text-success {
+    color: var(--bs-success) !important;
+}
+
+.text-danger {
+    color: var(--bs-danger) !important;
+}
+
+.text-warning {
+    color: var(--bs-warning) !important;
+}
+</style>

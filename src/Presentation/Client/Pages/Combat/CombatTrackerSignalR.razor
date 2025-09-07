@@ -1,0 +1,482 @@
+@page "/combat-signalr/{combatId:guid?}"
+@using PathfinderCampaignManager.Presentation.Client.Services
+@using PathfinderCampaignManager.Presentation.Shared.Models
+@using System.ComponentModel.DataAnnotations
+@inject CombatSignalRService SignalRService
+@inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
+
+<PageTitle>Real-Time Combat Tracker</PageTitle>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>
+                <i class="fas fa-swords me-2"></i>
+                Real-Time Combat Tracker
+                @if (_session != null)
+                {
+                    <small class="text-muted">- @_session.Name</small>
+                }
+            </h2>
+            <div class="d-flex align-items-center gap-3">
+                <span class="badge @(_isConnected ? "bg-success" : "bg-danger")">
+                    @(_isConnected ? "Connected" : "Disconnected")
+                </span>
+                @if (_session != null)
+                {
+                    <span class="badge @(_session.IsActive ? "bg-primary" : "bg-secondary")">
+                        @(_session.IsActive ? $"Round {_session.Round}" : "Inactive")
+                    </span>
+                }
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            @if (_session != null && !_session.IsActive)
+            {
+                <button class="btn btn-success" @onclick="StartCombat">
+                    <i class="fas fa-play me-1"></i>
+                    Start Combat
+                </button>
+            }
+            else if (_session?.IsActive == true)
+            {
+                <button class="btn btn-primary" @onclick="NextTurn">
+                    <i class="fas fa-forward me-1"></i>
+                    Next Turn
+                </button>
+                <button class="btn btn-warning" @onclick="EndCombat">
+                    <i class="fas fa-stop me-1"></i>
+                    End Combat
+                </button>
+            }
+            <button class="btn btn-outline-primary" @onclick="ShowAddParticipantModal">
+                <i class="fas fa-plus me-1"></i>
+                Add Participant
+            </button>
+        </div>
+    </div>
+
+    @if (_session?.Participants.Any() == true)
+    {
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Initiative Order</h5>
+            </div>
+            <div class="list-group list-group-flush">
+                @foreach (var participant in _session.Participants)
+                {
+                    var isCurrentTurn = _session.IsActive && _session.Participants.IndexOf(participant) == _session.CurrentTurn;
+                    <div class="list-group-item @(isCurrentTurn ? "list-group-item-warning" : "")">
+                        <div class="row align-items-center">
+                            <div class="col-md-3">
+                                <div class="d-flex align-items-center">
+                                    @if (isCurrentTurn)
+                                    {
+                                        <i class="fas fa-arrow-right text-primary me-2"></i>
+                                    }
+                                    <div>
+                                        <h6 class="mb-0">@participant.Name</h6>
+                                        <small class="text-muted">
+                                            <span class="badge @(participant.IsPlayerCharacter ? "bg-info" : "bg-warning")">
+                                                @(participant.IsPlayerCharacter ? "PC" : participant.Type)
+                                            </span>
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-2 text-center">
+                                <strong>Init: @participant.Initiative</strong>
+                                <br>
+                                <input type="number" class="form-control form-control-sm mt-1" 
+                                       value="@participant.Initiative" 
+                                       @onchange="@((e) => UpdateInitiative(participant.Id.ToString(), int.Parse(e.Value?.ToString() ?? "0")))"
+                                       style="width: 70px;" />
+                            </div>
+                            <div class="col-md-2 text-center">
+                                <strong>HP: @participant.CurrentHitPoints / @participant.HitPoints</strong>
+                                <div class="d-flex gap-1 mt-1">
+                                    <input type="number" class="form-control form-control-sm" 
+                                           value="@participant.CurrentHitPoints" 
+                                           @onchange="@((e) => UpdateHitPoints(participant.Id.ToString(), int.Parse(e.Value?.ToString() ?? "0"), participant.HitPoints))"
+                                           style="width: 60px;" />
+                                    <span class="align-self-center">/</span>
+                                    <input type="number" class="form-control form-control-sm" 
+                                           value="@participant.HitPoints" 
+                                           @onchange="@((e) => UpdateHitPoints(participant.Id.ToString(), participant.CurrentHitPoints, int.Parse(e.Value?.ToString() ?? "0")))"
+                                           style="width: 60px;" />
+                                </div>
+                            </div>
+                            <div class="col-md-2 text-center">
+                                <strong>AC: @participant.ArmorClass</strong>
+                                <br>
+                                <small class="text-muted">
+                                    Perc: @participant.Perception
+                                </small>
+                            </div>
+                            <div class="col-md-2 text-center">
+                                <small class="text-muted">
+                                    F: @participant.Fortitude<br>
+                                    R: @participant.Reflex<br>
+                                    W: @participant.Will
+                                </small>
+                            </div>
+                            <div class="col-md-1 text-end">
+                                <button class="btn btn-sm btn-outline-danger" 
+                                        @onclick="() => RemoveParticipant(participant.Id.ToString())">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                        @if (participant.Conditions.Any())
+                        {
+                            <div class="mt-2">
+                                <small class="text-muted">Conditions:</small>
+                                @foreach (var condition in participant.Conditions)
+                                {
+                                    <span class="badge bg-danger ms-1">@condition</span>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="text-center py-5">
+            <i class="fas fa-users fa-3x text-muted mb-3"></i>
+            <h4 class="text-muted">No Participants</h4>
+            <p class="text-muted">Add characters and monsters to start combat.</p>
+            <button class="btn btn-primary" @onclick="ShowAddParticipantModal">
+                <i class="fas fa-plus me-1"></i>
+                Add First Participant
+            </button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle me-1"></i>
+            @_errorMessage
+        </div>
+    }
+</div>
+
+<!-- Add Participant Modal -->
+@if (_showAddModal)
+{
+    <div class="modal fade show d-block" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Combat Participant</h5>
+                    <button type="button" class="btn-close" @onclick="HideAddParticipantModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="@_addParticipantModel" OnValidSubmit="@AddParticipant">
+                        <DataAnnotationsValidator />
+                        
+                        <div class="mb-3">
+                            <label for="participantName" class="form-label">Name *</label>
+                            <InputText id="participantName" @bind-Value="_addParticipantModel.Name" class="form-control" />
+                            <ValidationMessage For="@(() => _addParticipantModel.Name)" class="text-danger" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="participantType" class="form-label">Type</label>
+                            <InputSelect id="participantType" @bind-Value="_addParticipantModel.Type" class="form-select">
+                                <option value="PC">Player Character</option>
+                                <option value="NPC">NPC</option>
+                                <option value="Monster">Monster</option>
+                            </InputSelect>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="initiative" class="form-label">Initiative *</label>
+                                <InputNumber id="initiative" @bind-Value="_addParticipantModel.Initiative" class="form-control" />
+                                <ValidationMessage For="@(() => _addParticipantModel.Initiative)" class="text-danger" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="ac" class="form-label">AC</label>
+                                <InputNumber id="ac" @bind-Value="_addParticipantModel.ArmorClass" class="form-control" />
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="hp" class="form-label">Hit Points</label>
+                                <InputNumber id="hp" @bind-Value="_addParticipantModel.HitPoints" class="form-control" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="perception" class="form-label">Perception</label>
+                                <InputNumber id="perception" @bind-Value="_addParticipantModel.Perception" class="form-control" />
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="fort" class="form-label">Fortitude</label>
+                                <InputNumber id="fort" @bind-Value="_addParticipantModel.Fortitude" class="form-control" />
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="reflex" class="form-label">Reflex</label>
+                                <InputNumber id="reflex" @bind-Value="_addParticipantModel.Reflex" class="form-control" />
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="will" class="form-label">Will</label>
+                                <InputNumber id="will" @bind-Value="_addParticipantModel.Will" class="form-control" />
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-secondary" @onclick="HideAddParticipantModal">
+                                Cancel
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                Add Participant
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    [Parameter] public Guid? CombatId { get; set; }
+
+    private CombatSession? _session;
+    private bool _isConnected = false;
+    private string _errorMessage = string.Empty;
+    private bool _showAddModal = false;
+    private AddParticipantModel _addParticipantModel = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (CombatId == null)
+        {
+            CombatId = Guid.NewGuid();
+        }
+
+        try
+        {
+            await SignalRService.InitializeAsync();
+            SignalRService.SubscribeToEvents();
+            
+            // Subscribe to events
+            SignalRService.OnCombatStateUpdated += OnCombatStateUpdated;
+            SignalRService.OnInitiativeUpdated += OnInitiativeUpdated;
+            SignalRService.OnHitPointsUpdated += OnHitPointsUpdated;
+            SignalRService.OnParticipantAdded += OnParticipantAdded;
+            SignalRService.OnParticipantRemoved += OnParticipantRemoved;
+            SignalRService.OnCombatStarted += OnCombatStarted;
+            SignalRService.OnCombatEnded += OnCombatEnded;
+            SignalRService.OnTurnChanged += OnTurnChanged;
+
+            _isConnected = SignalRService.IsConnected;
+            
+            if (_isConnected)
+            {
+                await SignalRService.JoinCombatAsync(CombatId.ToString()!);
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to connect to SignalR: {ex.Message}";
+        }
+    }
+
+    private async Task UpdateInitiative(string participantId, int initiative)
+    {
+        try
+        {
+            await SignalRService.UpdateInitiativeAsync(CombatId.ToString()!, participantId, initiative);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to update initiative: {ex.Message}";
+        }
+    }
+
+    private async Task UpdateHitPoints(string participantId, int currentHp, int maxHp)
+    {
+        try
+        {
+            await SignalRService.UpdateHitPointsAsync(CombatId.ToString()!, participantId, currentHp, maxHp);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to update hit points: {ex.Message}";
+        }
+    }
+
+    private async Task AddParticipant()
+    {
+        try
+        {
+            var participant = new CombatParticipant
+            {
+                Name = _addParticipantModel.Name!,
+                Type = _addParticipantModel.Type,
+                Initiative = _addParticipantModel.Initiative,
+                HitPoints = _addParticipantModel.HitPoints,
+                CurrentHitPoints = _addParticipantModel.HitPoints,
+                ArmorClass = _addParticipantModel.ArmorClass,
+                Perception = _addParticipantModel.Perception,
+                Fortitude = _addParticipantModel.Fortitude,
+                Reflex = _addParticipantModel.Reflex,
+                Will = _addParticipantModel.Will,
+                IsPlayerCharacter = _addParticipantModel.Type == "PC"
+            };
+
+            await SignalRService.AddParticipantAsync(CombatId.ToString()!, participant);
+            HideAddParticipantModal();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to add participant: {ex.Message}";
+        }
+    }
+
+    private async Task RemoveParticipant(string participantId)
+    {
+        try
+        {
+            await SignalRService.RemoveParticipantAsync(CombatId.ToString()!, participantId);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to remove participant: {ex.Message}";
+        }
+    }
+
+    private async Task StartCombat()
+    {
+        try
+        {
+            await SignalRService.StartCombatAsync(CombatId.ToString()!);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to start combat: {ex.Message}";
+        }
+    }
+
+    private async Task EndCombat()
+    {
+        try
+        {
+            await SignalRService.EndCombatAsync(CombatId.ToString()!);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to end combat: {ex.Message}";
+        }
+    }
+
+    private async Task NextTurn()
+    {
+        try
+        {
+            await SignalRService.NextTurnAsync(CombatId.ToString()!);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to advance turn: {ex.Message}";
+        }
+    }
+
+    private void ShowAddParticipantModal()
+    {
+        _showAddModal = true;
+        _addParticipantModel = new();
+    }
+
+    private void HideAddParticipantModal()
+    {
+        _showAddModal = false;
+        _addParticipantModel = new();
+    }
+
+    // SignalR Event Handlers
+    private async void OnCombatStateUpdated(CombatSession session)
+    {
+        _session = session;
+        _errorMessage = string.Empty;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void OnInitiativeUpdated(string participantId, int initiative)
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void OnHitPointsUpdated(string participantId, int currentHp, int maxHp)
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void OnParticipantAdded(CombatParticipant participant)
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void OnParticipantRemoved(string participantId)
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void OnCombatStarted(CombatSession session)
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void OnCombatEnded(CombatSession session)
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void OnTurnChanged(int currentTurn, int round)
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (CombatId != null)
+        {
+            try
+            {
+                await SignalRService.LeaveCombatAsync(CombatId.ToString()!);
+            }
+            catch { }
+        }
+        
+        SignalRService.UnsubscribeFromEvents();
+        await SignalRService.DisposeAsync();
+    }
+
+    public class AddParticipantModel
+    {
+        [Required(ErrorMessage = "Name is required")]
+        public string? Name { get; set; }
+
+        [Required(ErrorMessage = "Initiative is required")]
+        [Range(-10, 50, ErrorMessage = "Initiative must be between -10 and 50")]
+        public int Initiative { get; set; } = 10;
+
+        public string Type { get; set; } = "PC";
+        public int HitPoints { get; set; } = 20;
+        public int ArmorClass { get; set; } = 15;
+        public int Perception { get; set; } = 10;
+        public int Fortitude { get; set; } = 10;
+        public int Reflex { get; set; } = 10;
+        public int Will { get; set; } = 10;
+    }
+}

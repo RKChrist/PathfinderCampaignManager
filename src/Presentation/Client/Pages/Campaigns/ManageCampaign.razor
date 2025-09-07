@@ -1,0 +1,241 @@
+@page "/campaigns/{CampaignId:guid}/manage"
+@inject IJSRuntime JSRuntime
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@using System.Text.Json
+@using System.Net.Http.Headers
+@using System.Net.Http.Json
+
+<PageTitle>Manage Campaign - Pathfinder Campaign Manager</PageTitle>
+
+<div class="container-fluid">
+    @if (_isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading campaign...</span>
+            </div>
+            <p class="mt-3 text-muted">Loading campaign details...</p>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="alert alert-danger" role="alert">
+            @_errorMessage
+        </div>
+    }
+    else if (_campaign != null)
+    {
+        <div class="row mb-4">
+            <div class="col">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="/campaigns">Campaigns</a></li>
+                        <li class="breadcrumb-item"><a href="/campaigns/@CampaignId">@_campaign.Name</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Manage</li>
+                    </ol>
+                </nav>
+                <h1 class="display-6">
+                    <i class="fas fa-cogs me-2"></i>
+                    Manage @_campaign.Name
+                </h1>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Campaign Settings -->
+            <div class="col-lg-8">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-edit me-2"></i>
+                            Campaign Details
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <EditForm Model="_updateRequest" OnValidSubmit="UpdateCampaign">
+                            <DataAnnotationsValidator />
+                            
+                            <div class="mb-3">
+                                <label for="campaignName" class="form-label fw-bold">Campaign Name</label>
+                                <InputText id="campaignName" 
+                                          class="form-control" 
+                                          @bind-Value="_updateRequest.Name" />
+                                <ValidationMessage For="() => _updateRequest.Name" class="text-danger small" />
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="campaignDescription" class="form-label fw-bold">Description</label>
+                                <InputTextArea id="campaignDescription" 
+                                              class="form-control" 
+                                              rows="4"
+                                              @bind-Value="_updateRequest.Description" />
+                                <ValidationMessage For="() => _updateRequest.Description" class="text-danger small" />
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary" disabled="@_isUpdating">
+                                @if (_isUpdating)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                }
+                                <i class="fas fa-save me-2"></i>
+                                Update Campaign
+                            </button>
+                        </EditForm>
+                    </div>
+                </div>
+                
+                <!-- Variant Rules -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-magic me-2"></i>
+                            Variant Rules
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-3">Configure optional rules for your campaign.</p>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" id="freeArchetype" @bind="_variantRules.FreeArchetype">
+                                    <label class="form-check-label" for="freeArchetype">
+                                        <strong>Free Archetype</strong>
+                                        <br><small class="text-muted">Players get free archetype feats</small>
+                                    </label>
+                                </div>
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" id="dualClass" @bind="_variantRules.DualClass">
+                                    <label class="form-check-label" for="dualClass">
+                                        <strong>Dual Class</strong>
+                                        <br><small class="text-muted">Characters gain levels in two classes</small>
+                                    </label>
+                                </div>
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" id="proficiencyWithoutLevel" @bind="_variantRules.ProficiencyWithoutLevel">
+                                    <label class="form-check-label" for="proficiencyWithoutLevel">
+                                        <strong>Proficiency Without Level</strong>
+                                        <br><small class="text-muted">Level doesn't add to proficiency</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" id="automaticBonusProgression" @bind="_variantRules.AutomaticBonusProgression">
+                                    <label class="form-check-label" for="automaticBonusProgression">
+                                        <strong>Automatic Bonus Progression</strong>
+                                        <br><small class="text-muted">Built-in bonuses replace magic items</small>
+                                    </label>
+                                </div>
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" id="gradualAbilityBoosts" @bind="_variantRules.GradualAbilityBoosts">
+                                    <label class="form-check-label" for="gradualAbilityBoosts">
+                                        <strong>Gradual Ability Boosts</strong>
+                                        <br><small class="text-muted">Ability boosts given gradually</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn btn-outline-primary mt-3" @onclick="UpdateVariantRules" disabled="@_isUpdatingRules">
+                            @if (_isUpdatingRules)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            }
+                            <i class="fas fa-magic me-2"></i>
+                            Update Variant Rules
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Campaign Management -->
+            <div class="col-lg-4">
+                <!-- Join Information -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-users me-2"></i>
+                            Player Invitation
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-3">Share this link with players to let them join your campaign.</p>
+                        <div class="input-group mb-3">
+                            <input type="text" class="form-control" readonly 
+                                   value="@GetJoinUrl()" id="joinUrl">
+                            <button class="btn btn-outline-secondary" type="button" @onclick="CopyJoinUrl">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <button class="btn btn-warning btn-sm" @onclick="RegenerateJoinToken" disabled="@_isRegeneratingToken">
+                            @if (_isRegeneratingToken)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            }
+                            <i class="fas fa-refresh me-2"></i>
+                            Generate New Link
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Campaign Stats -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-chart-bar me-2"></i>
+                            Campaign Statistics
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>Members:</span>
+                            <span class="badge bg-primary">@_campaign.MemberCount</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>Sessions:</span>
+                            <span class="badge bg-info">@_campaign.SessionCount</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>Created:</span>
+                            <span class="text-muted">@_campaign.CreatedAt.ToString("MMM dd, yyyy")</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Last Activity:</span>
+                            <span class="text-muted">
+                                @if (_campaign.LastActivityAt.HasValue)
+                                {
+                                    @_campaign.LastActivityAt.Value.ToString("MMM dd, yyyy")
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Never</span>
+                                }
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Danger Zone -->
+                <div class="card border-danger mb-4">
+                    <div class="card-header text-danger">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Danger Zone
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-3">These actions cannot be undone.</p>
+                        <button class="btn btn-outline-danger btn-sm" disabled>
+                            <i class="fas fa-archive me-2"></i>
+                            Archive Campaign
+                        </button>
+                        <button class="btn btn-danger btn-sm ms-2" disabled>
+                            <i class="fas fa-trash me-2"></i>
+                            Delete Campaign
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>

@@ -1,0 +1,450 @@
+@using PathfinderCampaignManager.Domain.Enums
+
+<div class="@NoteCardClass" style="background-color: @Note.Color">
+    <div class="note-header">
+        <div class="note-info">
+            <div class="note-visibility">
+                <i class="@VisibilityInfo.Icon" title="@VisibilityInfo.Title"></i>
+            </div>
+            <div class="note-author">
+                <small>@Note.AuthorName</small>
+            </div>
+            <div class="note-date">
+                <small>@GetFormattedDate()</small>
+            </div>
+        </div>
+        
+        <div class="note-actions">
+            <button class="@PinButtonClass" 
+                    @onclick="() => OnPin.InvokeAsync(Note)"
+                    title="@PinTitle">
+                <i class="fas fa-thumbtack"></i>
+            </button>
+            
+            @if (CanEdit)
+            {
+                <div class="dropdown">
+                    <button class="action-button dropdown-toggle" 
+                            type="button" 
+                            data-bs-toggle="dropdown" 
+                            aria-expanded="false"
+                            title="More options">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li>
+                            <button class="dropdown-item" @onclick="StartEdit">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                        </li>
+                        <li>
+                            <button class="dropdown-item" @onclick="ShowVisibilityMenu">
+                                <i class="fas fa-eye"></i> Change Visibility
+                            </button>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <button class="dropdown-item text-danger" @onclick="DeleteNote">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="note-content">
+        @if (IsEditing)
+        {
+            <div class="edit-form">
+                <input type="text" 
+                       class="form-control title-input" 
+                       @bind="_editTitle"
+                       @ref="_editTitleRef"
+                       placeholder="Note title..." />
+                
+                <textarea class="form-control content-input" 
+                          @bind="_editContent"
+                          placeholder="Note content..."
+                          rows="4"></textarea>
+                
+                <div class="edit-actions">
+                    <button class="btn btn-sm btn-primary" @onclick="SaveEdit">
+                        <i class="fas fa-save"></i> Save
+                    </button>
+                    <button class="btn btn-sm btn-secondary" @onclick="CancelEdit">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        }
+        else
+        {
+            <h5 class="note-title">@Note.Title</h5>
+            <div class="note-body">
+                @((MarkupString)FormatContent(Note.Content))
+            </div>
+            
+            @if (Note.Tags.Any())
+            {
+                <div class="note-tags">
+                    @foreach (var tag in Note.Tags)
+                    {
+                        <span class="tag">#@tag</span>
+                    }
+                </div>
+            }
+        }
+    </div>
+
+    <!-- Visibility Change Modal -->
+    @if (_showVisibilityMenu)
+    {
+        <div class="visibility-overlay" @onclick="HideVisibilityMenu">
+            <div class="visibility-menu" @onclick:stopPropagation="true">
+                <h6>Change Visibility</h6>
+                <div class="visibility-options">
+                    <button class="@GetVisibilityOptionClass(NoteVisibility.Private)"
+                            @onclick="() => ChangeVisibility(NoteVisibility.Private)">
+                        <i class="fas fa-user"></i>
+                        <div>
+                            <strong>Private</strong>
+                            <small>Only you can see this note</small>
+                        </div>
+                    </button>
+                    
+                    <button class="@GetVisibilityOptionClass(NoteVisibility.Shared)"
+                            @onclick="() => ChangeVisibility(NoteVisibility.Shared)">
+                        <i class="fas fa-users"></i>
+                        <div>
+                            <strong>Shared</strong>
+                            <small>Character owner and DM can see this</small>
+                        </div>
+                    </button>
+                    
+                    <button class="@GetVisibilityOptionClass(NoteVisibility.DMOnly)"
+                            @onclick="() => ChangeVisibility(NoteVisibility.DMOnly)">
+                        <i class="fas fa-crown"></i>
+                        <div>
+                            <strong>DM Only</strong>
+                            <small>Only DMs can see this note</small>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+.note-card {
+    margin-bottom: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(0,0,0,0.1);
+    overflow: hidden;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.note-card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transform: translateY(-1px);
+}
+
+.note-card.editing {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+.note-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem 0.5rem 1rem;
+    background: rgba(255,255,255,0.8);
+    backdrop-filter: blur(4px);
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.note-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.note-visibility {
+    color: var(--text-secondary);
+}
+
+.note-author small,
+.note-date small {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+}
+
+.note-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.action-button {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: 0.25rem;
+    transition: all 0.2s ease;
+}
+
+.action-button:hover {
+    background: rgba(0,0,0,0.1);
+    color: var(--text-primary);
+}
+
+.pin-button.pinned {
+    color: var(--primary-color);
+}
+
+.dropdown-toggle::after {
+    display: none;
+}
+
+.note-content {
+    padding: 1rem;
+}
+
+.note-title {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.note-body {
+    color: var(--text-primary);
+    line-height: 1.5;
+    margin-bottom: 0.75rem;
+    white-space: pre-wrap;
+}
+
+.note-body p {
+    margin-bottom: 0.75rem;
+}
+
+.note-body p:last-child {
+    margin-bottom: 0;
+}
+
+.note-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    margin-top: 0.75rem;
+}
+
+.tag {
+    background: rgba(0,0,0,0.1);
+    color: var(--text-secondary);
+    padding: 0.125rem 0.5rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.edit-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.title-input,
+.content-input {
+    border: 1px solid var(--border-color);
+    border-radius: 0.375rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    transition: border-color 0.2s ease;
+}
+
+.title-input:focus,
+.content-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.content-input {
+    resize: vertical;
+    min-height: 80px;
+    font-family: inherit;
+}
+
+.edit-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.visibility-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.visibility-menu {
+    background: white;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    min-width: 300px;
+}
+
+.visibility-menu h6 {
+    margin: 0 0 1rem 0;
+    color: var(--text-primary);
+}
+
+.visibility-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.visibility-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: none;
+    border: 1px solid var(--border-color);
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+}
+
+.visibility-option:hover {
+    background: var(--surface-background);
+}
+
+.visibility-option.active {
+    border-color: var(--primary-color);
+    background: rgba(var(--primary-color-rgb), 0.1);
+}
+
+.visibility-option i {
+    color: var(--text-secondary);
+    width: 16px;
+}
+
+.visibility-option div strong {
+    display: block;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+}
+
+.visibility-option div small {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.75rem;
+    border: none;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background: var(--primary-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--primary-color-dark);
+}
+
+.btn-secondary {
+    background: var(--surface-background);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    background: var(--border-color);
+    color: var(--text-primary);
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+
+.dropdown-menu {
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 0.375rem;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    padding: 0.5rem 0;
+    min-width: 140px;
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.5rem 1rem;
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.dropdown-item:hover {
+    background: var(--surface-background);
+}
+
+.dropdown-item.text-danger {
+    color: var(--danger-color);
+}
+
+.dropdown-divider {
+    margin: 0.5rem 0;
+    border: none;
+    border-top: 1px solid var(--border-color);
+}
+
+/* CSS custom properties fallbacks */
+:root {
+    --text-primary: #1f2937;
+    --text-secondary: #6b7280;
+    --primary-color: #3b82f6;
+    --primary-color-dark: #2563eb;
+    --primary-color-rgb: 59, 130, 246;
+    --surface-background: #f9fafb;
+    --border-color: #e5e7eb;
+    --danger-color: #dc2626;
+}
+</style>
+

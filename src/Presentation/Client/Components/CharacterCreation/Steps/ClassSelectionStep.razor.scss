@@ -1,0 +1,433 @@
+@import '../../../Styles/variables';
+@import '../../../Styles/mixins';
+
+.class-selection-step {
+  .step-header {
+    text-align: center;
+    margin-bottom: $spacing-xl;
+
+    .step-title {
+      @include heading-2;
+      margin-bottom: $spacing-sm;
+    }
+
+    .step-subtitle {
+      @include body-large;
+      color: $text-secondary;
+      margin-bottom: $spacing-lg;
+    }
+  }
+
+  .class-filters {
+    @include card;
+    padding: $spacing-lg;
+    margin-bottom: $spacing-xl;
+
+    .filters-grid {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: $spacing-lg;
+      align-items: end;
+
+      @include responsive('sm') {
+        grid-template-columns: 1fr;
+        gap: $spacing-md;
+      }
+
+      .search-group {
+        .search-input {
+          @include form-input;
+          padding-left: $spacing-xl;
+        }
+
+        .search-container {
+          position: relative;
+
+          .search-icon {
+            position: absolute;
+            left: $spacing-md;
+            top: 50%;
+            transform: translateY(-50%);
+            color: $text-secondary;
+            pointer-events: none;
+          }
+        }
+      }
+
+      .role-filter {
+        min-width: 150px;
+
+        select {
+          @include form-input;
+        }
+      }
+
+      .core-classes-toggle {
+        display: flex;
+        align-items: center;
+        gap: $spacing-sm;
+        white-space: nowrap;
+
+        input[type="checkbox"] {
+          width: 18px;
+          height: 18px;
+          accent-color: $primary-color;
+        }
+
+        label {
+          margin: 0;
+          cursor: pointer;
+          user-select: none;
+        }
+      }
+    }
+  }
+
+  .classes-grid {
+    @include grid-auto-fit(320px);
+    margin-bottom: $spacing-xl;
+  }
+
+  .class-card {
+    @include card;
+    padding: $spacing-lg;
+    cursor: pointer;
+    transition: all $transition-normal;
+    position: relative;
+    border: 2px solid transparent;
+
+    &:hover,
+    &.hovered {
+      transform: translateY(-2px);
+      box-shadow: $shadow-lg;
+    }
+
+    &.selected {
+      border-color: $primary-color;
+      background: rgba(var(--primary-color-rgb), 0.05);
+    }
+
+    // Class-specific color theming
+    @each $class, $color in $class-colors {
+      &.class-#{$class} {
+        .class-header::before {
+          background: #{$color};
+        }
+
+        &.selected {
+          border-color: #{$color};
+          background: rgba(#{$color}, 0.05);
+        }
+      }
+    }
+
+    .class-header {
+      position: relative;
+      padding-left: $spacing-md;
+      margin-bottom: $spacing-md;
+
+      &::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        border-radius: $radius-sm;
+        background: $primary-color;
+      }
+
+      .class-name {
+        @include heading-3;
+        margin: 0 0 $spacing-xs 0;
+      }
+
+      .class-role {
+        @include body-small;
+        color: $text-secondary;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 600;
+      }
+    }
+
+    .class-description {
+      @include body-small;
+      @include text-clamp(3);
+      margin-bottom: $spacing-md;
+      color: $text-secondary;
+    }
+
+    .class-stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: $spacing-sm;
+      margin-bottom: $spacing-md;
+
+      .stat {
+        padding: $spacing-xs $spacing-sm;
+        background: $background-secondary;
+        border-radius: $radius-sm;
+        text-align: center;
+
+        .stat-label {
+          @include body-small;
+          color: $text-muted;
+          margin: 0 0 2px 0;
+          font-size: 0.75rem;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .stat-value {
+          @include body-small;
+          font-weight: 600;
+          color: $text-primary;
+        }
+      }
+    }
+
+    .class-abilities {
+      .abilities-label {
+        @include body-small;
+        color: $text-muted;
+        margin: 0 0 $spacing-xs 0;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .abilities-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: $spacing-xs;
+
+        .ability-badge {
+          padding: 2px $spacing-xs;
+          background: rgba($primary-color, 0.1);
+          color: $primary-color;
+          border-radius: $radius-sm;
+          font-size: 0.75rem;
+          font-weight: 600;
+          text-transform: uppercase;
+        }
+      }
+    }
+
+    .class-traits {
+      margin-top: $spacing-md;
+
+      .traits-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: $spacing-xs;
+
+        .trait {
+          padding: 2px $spacing-xs;
+          background: $background-tertiary;
+          border-radius: $radius-sm;
+          font-size: 0.75rem;
+          color: $text-secondary;
+          text-transform: uppercase;
+        }
+      }
+    }
+
+    .selection-indicator {
+      position: absolute;
+      top: $spacing-md;
+      right: $spacing-md;
+      width: 24px;
+      height: 24px;
+      border: 2px solid $border-color;
+      border-radius: 50%;
+      background: $background-primary;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all $transition-normal;
+
+      .check-icon {
+        opacity: 0;
+        color: white;
+        font-size: 12px;
+        transition: opacity $transition-normal;
+      }
+    }
+
+    &.selected .selection-indicator {
+      background: $primary-color;
+      border-color: $primary-color;
+
+      .check-icon {
+        opacity: 1;
+      }
+    }
+  }
+
+  .class-details-panel {
+    @include card;
+    padding: $spacing-xl;
+    position: sticky;
+    top: $spacing-lg;
+
+    .details-header {
+      @include flex-between;
+      margin-bottom: $spacing-lg;
+
+      .class-name {
+        @include heading-2;
+        margin: 0;
+      }
+
+      .close-button {
+        @include button-secondary;
+        padding: $spacing-xs;
+      }
+    }
+
+    .details-content {
+      .description {
+        @include body-normal;
+        margin-bottom: $spacing-lg;
+        line-height: 1.6;
+      }
+
+      .details-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: $spacing-lg;
+        margin-bottom: $spacing-lg;
+
+        @include responsive('sm') {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .detail-section {
+        .section-title {
+          @include body-normal;
+          font-weight: 600;
+          margin: 0 0 $spacing-sm 0;
+        }
+
+        .section-content {
+          @include body-small;
+          color: $text-secondary;
+        }
+      }
+
+      .roleplay-tips {
+        .tips-list {
+          list-style: none;
+          padding: 0;
+          margin: 0;
+
+          li {
+            @include body-small;
+            padding: $spacing-xs 0;
+            border-bottom: 1px solid $border-color-light;
+
+            &:last-child {
+              border-bottom: none;
+            }
+
+            &::before {
+              content: '•';
+              color: $primary-color;
+              font-weight: bold;
+              margin-right: $spacing-xs;
+            }
+          }
+        }
+      }
+    }
+
+    .select-class-button {
+      @include button-primary;
+      width: 100%;
+      padding: $spacing-md;
+      font-size: 1rem;
+      margin-top: $spacing-lg;
+    }
+  }
+
+  .no-classes-message {
+    text-align: center;
+    padding: $spacing-2xl;
+    color: $text-secondary;
+
+    .message-icon {
+      font-size: 3rem;
+      margin-bottom: $spacing-md;
+      opacity: 0.5;
+    }
+
+    .message-text {
+      @include body-large;
+      margin-bottom: $spacing-md;
+    }
+
+    .clear-filters-button {
+      @include button-secondary;
+    }
+  }
+
+  .loading-state {
+    @include flex-center;
+    padding: $spacing-2xl;
+
+    .spinner {
+      @include loading-spinner;
+      margin-right: $spacing-md;
+    }
+  }
+
+  .error-state {
+    text-align: center;
+    padding: $spacing-2xl;
+    color: $danger-color;
+
+    .error-icon {
+      font-size: 2rem;
+      margin-bottom: $spacing-md;
+    }
+
+    .error-message {
+      @include body-normal;
+      margin-bottom: $spacing-md;
+    }
+
+    .retry-button {
+      @include button-primary;
+    }
+  }
+}
+
+// Responsive adjustments
+@include responsive('lg') {
+  .class-selection-step {
+    .classes-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+}
+
+@include responsive('xl') {
+  .class-selection-step {
+    .classes-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+}
+
+// Animation for class card entrance
+.class-card {
+  @include fade-in;
+  
+  @for $i from 1 through 12 {
+    &:nth-child(#{$i}) {
+      animation-delay: #{$i * 0.1}s;
+    }
+  }
+}

@@ -1,0 +1,117 @@
+@using Microsoft.AspNetCore.Components
+
+<div class="pf2e-class-component fighter-class">
+    <div class="class-header">
+        <div class="class-icon">
+            <i class="fas fa-sword"></i>
+        </div>
+        <div class="class-info">
+            <h3 class="class-name">Fighter</h3>
+            <span class="class-role">Martial Warrior</span>
+        </div>
+        <div class="class-rarity common">Common</div>
+    </div>
+
+    <div class="class-stats-grid">
+        <div class="stat-block">
+            <span class="stat-label">Hit Points</span>
+            <span class="stat-value">10 + Con modifier</span>
+        </div>
+        <div class="stat-block">
+            <span class="stat-label">Key Abilities</span>
+            <span class="stat-value">Str or Dex</span>
+        </div>
+        <div class="stat-block">
+            <span class="stat-label">Initial Proficiencies</span>
+            <span class="stat-value">Expert in martial weapons</span>
+        </div>
+        <div class="stat-block">
+            <span class="stat-label">Skills</span>
+            <span class="stat-value">3 + Int modifier</span>
+        </div>
+    </div>
+
+    <div class="class-description">
+        <p>
+            Fighting for honor, greed, loyalty, or simply the thrill of battle, you are an undisputed master of weaponry and techniques of war.
+        </p>
+    </div>
+
+    <div class="class-actions">
+        <button class="btn btn-primary" @onclick="SelectClass" disabled="@IsSelected">
+            @if (IsSelected)
+            {
+                <i class="fas fa-check"></i> Selected
+            }
+            else
+            {
+                <i class="fas fa-plus"></i> Select Fighter
+            }
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool IsSelected { get; set; }
+    [Parameter] public EventCallback OnClassSelected { get; set; }
+    [Parameter] public CharacterBuilder? Character { get; set; }
+
+    private async Task SelectClass()
+    {
+        if (Character != null)
+        {
+            Character.SelectedClass = GetClassDefinition();
+        }
+
+        await OnClassSelected.InvokeAsync();
+    }
+
+    public static PathfinderClass GetClassDefinition()
+    {
+        return new PathfinderClass
+        {
+            Id = "fighter",
+            Name = "Fighter",
+            Description = "Fighting for honor, greed, loyalty, or simply the thrill of battle, you are an undisputed master of weaponry and techniques of war.",
+            HitPoints = 10,
+            KeyAbilities = new List<AbilityScore> { AbilityScore.Strength, AbilityScore.Dexterity },
+            SkillPoints = 3,
+            Source = "Core Rulebook",
+            Rarity = "Common",
+            Traits = new List<string>(),
+            InitialProficiencies = new ClassProficiencies
+            {
+                Perception = ProficiencyLevel.Expert,
+                FortitudeSave = ProficiencyLevel.Expert,
+                ReflexSave = ProficiencyLevel.Expert,
+                WillSave = ProficiencyLevel.Trained,
+                Skills = new Dictionary<string, ProficiencyLevel>
+                {
+                    ["Acrobatics"] = ProficiencyLevel.Trained,
+                    ["Athletics"] = ProficiencyLevel.Trained
+                },
+                Weapons = new Dictionary<string, ProficiencyLevel>
+                {
+                    ["Simple"] = ProficiencyLevel.Expert,
+                    ["Martial"] = ProficiencyLevel.Expert,
+                    ["Advanced"] = ProficiencyLevel.Trained
+                },
+                Armor = new Dictionary<string, ProficiencyLevel>
+                {
+                    ["Unarmored"] = ProficiencyLevel.Trained,
+                    ["Light"] = ProficiencyLevel.Trained,
+                    ["Medium"] = ProficiencyLevel.Trained,
+                    ["Heavy"] = ProficiencyLevel.Trained
+                }
+            },
+            ClassFeatures = new List<string>
+            {
+                "Attack of Opportunity",
+                "Fighter Feats",
+                "Shield Block",
+                "Bravery",
+                "Combat Flexibility"
+            }
+        };
+    }
+}

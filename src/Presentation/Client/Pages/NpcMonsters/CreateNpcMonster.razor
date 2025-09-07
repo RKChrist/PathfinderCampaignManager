@@ -1,0 +1,238 @@
+@page "/npc-monsters/create"
+@page "/npc-monsters/create/{sessionId:guid?}"
+@using PathfinderCampaignManager.Domain.Enums
+@using PathfinderCampaignManager.Presentation.Client.Components.Auth
+@using System.ComponentModel.DataAnnotations
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Create NPC/Monster</PageTitle>
+
+<AuthGuard CustomMessage="You must be logged in to create NPCs and monsters." RedirectToLogin="true">
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="mb-0">
+                        <i class="fas fa-dragon me-2"></i>
+                        Create New NPC/Monster
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <EditForm Model="@model" OnValidSubmit="@HandleSubmit">
+                        <DataAnnotationsValidator />
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="name" class="form-label">Name *</label>
+                                    <InputText id="name" @bind-Value="model.Name" class="form-control" placeholder="Enter NPC/Monster name" />
+                                    <ValidationMessage For="@(() => model.Name)" class="text-danger" />
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="type" class="form-label">Type *</label>
+                                    <InputSelect id="type" @bind-Value="model.Type" class="form-select">
+                                        <option value="">Select Type</option>
+                                        @foreach (var type in Enum.GetValues<NpcMonsterType>())
+                                        {
+                                            <option value="@type">@type</option>
+                                        }
+                                    </InputSelect>
+                                    <ValidationMessage For="@(() => model.Type)" class="text-danger" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="level" class="form-label">Level *</label>
+                                    <InputNumber id="level" @bind-Value="model.Level" class="form-control" min="1" max="30" />
+                                    <ValidationMessage For="@(() => model.Level)" class="text-danger" />
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">
+                                        <InputCheckbox @bind-Value="model.IsTemplate" />
+                                        Is Template
+                                    </label>
+                                    <small class="form-text text-muted d-block">
+                                        Templates can be reused across sessions
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <InputTextArea id="description" @bind-Value="model.Description" class="form-control" rows="3" 
+                                         placeholder="Enter description, background, or notes..." />
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="ac" class="form-label">Armor Class</label>
+                                    <InputNumber id="ac" @bind-Value="model.ArmorClass" class="form-control" min="1" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="hp" class="form-label">Hit Points</label>
+                                    <InputNumber id="hp" @bind-Value="model.HitPoints" class="form-control" min="1" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="speed" class="form-label">Speed (feet)</label>
+                                    <InputNumber id="speed" @bind-Value="model.Speed" class="form-control" min="0" />
+                                </div>
+                            </div>
+                        </div>
+
+                        @if (isLoading)
+                        {
+                            <div class="d-flex justify-content-center">
+                                <div class="spinner-border" role="status">
+                                    <span class="visually-hidden">Creating...</span>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-plus me-1"></i>
+                                    Create NPC/Monster
+                                </button>
+                                <button type="button" class="btn btn-secondary" @onclick="Cancel">
+                                    <i class="fas fa-times me-1"></i>
+                                    Cancel
+                                </button>
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger mt-3">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                @errorMessage
+                            </div>
+                        }
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</AuthGuard>
+
+@code {
+    [Parameter] public Guid? SessionId { get; set; }
+
+    private CreateNpcMonsterModel model = new();
+    private bool isLoading = false;
+    private string errorMessage = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        if (SessionId.HasValue)
+        {
+            model.SessionId = SessionId.Value;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        isLoading = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            var request = new CreateNpcMonsterRequest(
+                model.Name!,
+                model.Type,
+                model.Level,
+                null, // OwnerUserId - would get from auth context in real app
+                model.SessionId
+            );
+
+            var response = await Http.PostAsJsonAsync("api/npcmonster", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var npcMonsterId = await response.Content.ReadFromJsonAsync<Guid>();
+                Navigation.NavigateTo($"/npc-monsters/{npcMonsterId}");
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                errorMessage = $"Failed to create NPC/Monster: {error}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        if (SessionId.HasValue)
+        {
+            Navigation.NavigateTo($"/sessions/{SessionId}");
+        }
+        else
+        {
+            Navigation.NavigateTo("/npc-monsters");
+        }
+    }
+
+    public class CreateNpcMonsterModel
+    {
+        [Required(ErrorMessage = "Name is required")]
+        [StringLength(100, ErrorMessage = "Name cannot exceed 100 characters")]
+        public string? Name { get; set; }
+
+        [Required(ErrorMessage = "Type is required")]
+        public NpcMonsterType Type { get; set; }
+
+        [Required(ErrorMessage = "Level is required")]
+        [Range(1, 30, ErrorMessage = "Level must be between 1 and 30")]
+        public int Level { get; set; }
+
+        [StringLength(1000, ErrorMessage = "Description cannot exceed 1000 characters")]
+        public string? Description { get; set; }
+
+        [Range(1, 50, ErrorMessage = "Armor Class must be between 1 and 50")]
+        public int? ArmorClass { get; set; }
+
+        [Range(1, 10000, ErrorMessage = "Hit Points must be between 1 and 10000")]
+        public int? HitPoints { get; set; }
+
+        [Range(0, 1000, ErrorMessage = "Speed must be between 0 and 1000")]
+        public int? Speed { get; set; }
+
+        public bool IsTemplate { get; set; }
+        
+        public Guid? SessionId { get; set; }
+    }
+
+    public record CreateNpcMonsterRequest(
+        string Name,
+        NpcMonsterType Type,
+        int Level,
+        Guid? OwnerUserId = null,
+        Guid? SessionId = null
+    );
+}

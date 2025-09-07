@@ -1,0 +1,184 @@
+@page "/campaigns/create"
+@inject IJSRuntime JSRuntime
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@using System.Text.Json
+@using System.Net.Http.Headers
+@using System.ComponentModel.DataAnnotations
+@using System.Net.Http.Json
+
+<PageTitle>Create Campaign - Pathfinder Campaign Manager</PageTitle>
+
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-xl-6">
+            <div class="card shadow-lg">
+                <div class="card-header text-center bg-primary text-white">
+                    <h2 class="mb-0">
+                        <i class="fas fa-dragon me-2"></i>
+                        Create New Campaign
+                    </h2>
+                    <p class="mb-0 mt-2">Start your Pathfinder adventure</p>
+                </div>
+                
+                <div class="card-body p-4">
+                    @if (_isLoading)
+                    {
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Creating campaign...</span>
+                            </div>
+                            <p class="mt-3 text-muted">Creating your campaign...</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <EditForm Model="_createRequest" OnValidSubmit="CreateCampaignAsync">
+                            <DataAnnotationsValidator />
+                            
+                            @if (!string.IsNullOrEmpty(_errorMessage))
+                            {
+                                <div class="alert alert-danger mb-4">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    @_errorMessage
+                                </div>
+                            }
+                            
+                            <div class="mb-4">
+                                <label for="campaignName" class="form-label fw-bold">
+                                    <i class="fas fa-flag me-2"></i>
+                                    Campaign Name *
+                                </label>
+                                <InputText id="campaignName" 
+                                          class="form-control form-control-lg" 
+                                          @bind-Value="_createRequest.Name"
+                                          placeholder="Enter your campaign name..." />
+                                <ValidationMessage For="() => _createRequest.Name" class="text-danger small mt-1" />
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label for="campaignDescription" class="form-label fw-bold">
+                                    <i class="fas fa-scroll me-2"></i>
+                                    Description
+                                </label>
+                                <InputTextArea id="campaignDescription" 
+                                              class="form-control" 
+                                              rows="4"
+                                              @bind-Value="_createRequest.Description"
+                                              placeholder="Describe your campaign's setting, story, or house rules..." />
+                                <div class="form-text">Optional: Help players understand what to expect</div>
+                                <ValidationMessage For="() => _createRequest.Description" class="text-danger small mt-1" />
+                            </div>
+                            
+                            <div class="mb-4">
+                                <h5 class="fw-bold mb-3">
+                                    <i class="fas fa-cogs me-2"></i>
+                                    Variant Rules
+                                </h5>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-check form-switch mb-2">
+                                            <InputCheckbox id="freeArchetype" class="form-check-input" @bind-Value="_createRequest.UseFreeArchetype" />
+                                            <label class="form-check-label" for="freeArchetype">
+                                                Free Archetype
+                                            </label>
+                                        </div>
+                                        <div class="form-check form-switch mb-2">
+                                            <InputCheckbox id="dualClass" class="form-check-input" @bind-Value="_createRequest.UseDualClass" />
+                                            <label class="form-check-label" for="dualClass">
+                                                Dual Class
+                                            </label>
+                                        </div>
+                                        <div class="form-check form-switch mb-2">
+                                            <InputCheckbox id="proficiencyWithoutLevel" class="form-check-input" @bind-Value="_createRequest.UseProficiencyWithoutLevel" />
+                                            <label class="form-check-label" for="proficiencyWithoutLevel">
+                                                Proficiency Without Level
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check form-switch mb-2">
+                                            <InputCheckbox id="automaticBonusProgression" class="form-check-input" @bind-Value="_createRequest.UseAutomaticBonusProgression" />
+                                            <label class="form-check-label" for="automaticBonusProgression">
+                                                Automatic Bonus Progression
+                                            </label>
+                                        </div>
+                                        <div class="form-check form-switch mb-2">
+                                            <InputCheckbox id="gradualAbilityBoosts" class="form-check-input" @bind-Value="_createRequest.UseGradualAbilityBoosts" />
+                                            <label class="form-check-label" for="gradualAbilityBoosts">
+                                                Gradual Ability Boosts
+                                            </label>
+                                        </div>
+                                        <div class="form-check form-switch mb-2">
+                                            <InputCheckbox id="staminaVariant" class="form-check-input" @bind-Value="_createRequest.UseStaminaVariant" />
+                                            <label class="form-check-label" for="staminaVariant">
+                                                Stamina Variant
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg" disabled="@_isLoading">
+                                    <i class="fas fa-plus me-2"></i>
+                                    Create Campaign
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" @onclick="Cancel" disabled="@_isLoading">
+                                    <i class="fas fa-times me-2"></i>
+                                    Cancel
+                                </button>
+                            </div>
+                        </EditForm>
+                    }
+                </div>
+            </div>
+            
+            <div class="mt-4">
+                <div class="card border-info">
+                    <div class="card-body">
+                        <h6 class="card-title text-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Getting Started
+                        </h6>
+                        <ul class="mb-0">
+                            <li>After creating your campaign, you'll receive a join link to share with players</li>
+                            <li>You can manage campaign settings, invite players, and track sessions from the campaign dashboard</li>
+                            <li>Variant rules can be changed later in campaign settings</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-control:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+    
+    .form-check-input:checked {
+        background-color: #0d6efd;
+        border-color: #0d6efd;
+    }
+    
+    .card {
+        border: none;
+        border-radius: 1rem;
+    }
+    
+    .card-header {
+        border-radius: 1rem 1rem 0 0;
+    }
+    
+    .form-switch .form-check-input {
+        width: 2.5em;
+        height: 1.25em;
+    }
+    
+    .form-switch .form-check-input:focus {
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+</style>

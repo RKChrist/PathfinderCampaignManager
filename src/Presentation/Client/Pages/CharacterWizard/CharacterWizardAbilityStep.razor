@@ -1,0 +1,276 @@
+<div class="character-wizard-ability-step">
+    <h3>Ability Scores</h3>
+    <p class="step-description">Assign your ability boosts from ancestry, background, and class. Your final scores determine your character's capabilities.</p>
+
+    @if (IsLoading)
+    {
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i>
+            Calculating abilities...
+        </div>
+    }
+    else if (CalculatedCharacter != null)
+    {
+        <div class="ability-assignment">
+            <div class="ability-method-selector">
+                <h4>Assignment Method</h4>
+                <div class="method-options">
+                    <label class="method-option">
+                        <input type="radio"
+                               name="abilityMethod"
+                               value="standard"
+                               @onchange='@(e => SetAssignmentMethod("standard"))'
+                               checked="@IsStandardMethodSelected" />
+                        <div class="method-info">
+                            <span class="method-name">Standard Array</span>
+                            <span class="method-description">Use the standard 10, 10, 10, 10 base scores</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="abilities-grid">
+                @foreach (var ability in AbilityNames)
+                {
+                    <div class="ability-card">
+                        <div class="ability-header">
+                            <h5>@ability</h5>
+                            <div class="ability-final-score">@GetFinalScore(ability)</div>
+                        </div>
+                        <div class="ability-breakdown">
+                            <div class="breakdown-row">
+                                <span class="breakdown-label">Base:</span>
+                                <span class="breakdown-value">10</span>
+                            </div>
+                            @if (GetBoostCount(ability, "Ancestry") > 0)
+                            {
+                                <div class="breakdown-row">
+                                    <span class="breakdown-label">Ancestry:</span>
+                                    <span class="breakdown-value">+@(GetBoostCount(ability, "Ancestry") * 2)</span>
+                                </div>
+                            }
+                            @if (GetBoostCount(ability, "Background") > 0)
+                            {
+                                <div class="breakdown-row">
+                                    <span class="breakdown-label">Background:</span>
+                                    <span class="breakdown-value">+@(GetBoostCount(ability, "Background") * 2)</span>
+                                </div>
+                            }
+                            @if (GetBoostCount(ability, "Class") > 0)
+                            {
+                                <div class="breakdown-row">
+                                    <span class="breakdown-label">Class:</span>
+                                    <span class="breakdown-value">+@(GetBoostCount(ability, "Class") * 2)</span>
+                                </div>
+                            }
+                            @if (GetBoostCount(ability, "Free") > 0)
+                            {
+                                <div class="breakdown-row">
+                                    <span class="breakdown-label">Free:</span>
+                                    <span class="breakdown-value">+@(GetBoostCount(ability, "Free") * 2)</span>
+                                </div>
+                            }
+                        </div>
+                        <div class="ability-modifier">@FormatModifier(GetModifier(ability))</div>
+                    </div>
+                }
+            </div>
+
+            <div class="free-boosts-section">
+                <h4>Free Ability Boosts (Level 1)</h4>
+                <p>You get 4 free ability boosts at 1st level. You cannot boost the same ability more than once with free boosts.</p>
+                <div class="free-boosts-grid">
+                    @for (int i = 0; i < 4; i++)
+                    {
+                        <div class="free-boost-slot">
+                            <select class="boost-selector"
+                                    @onchange="(ChangeEventArgs e) => SetFreeBoost(i, e.Value?.ToString())">
+                                <option value="">-- Select Ability --</option>
+                                @foreach (var ability in AbilityNames.Where(a => CanSelectFreeBoost(a, i)))
+                                {
+                                    <option value="@ability">@ability</option>
+                                }
+                            </select>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+
+<style>
+.character-wizard-ability-step {
+    padding: 1rem 0;
+}
+
+.step-description {
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+    line-height: 1.5;
+}
+
+.ability-method-selector {
+    margin-bottom: 2rem;
+}
+
+.ability-method-selector h4 {
+    margin: 0 0 1rem 0;
+    color: var(--text-primary);
+}
+
+.method-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.method-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.method-option:hover {
+    border-color: var(--primary-color);
+    background: var(--primary-color-5);
+}
+
+.method-option input[type="radio"] {
+    margin: 0;
+}
+
+.method-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.method-name {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.method-description {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.abilities-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.ability-card {
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    background: white;
+}
+
+.ability-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.ability-header h5 {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--text-primary);
+}
+
+.ability-final-score {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.ability-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-bottom: 0.75rem;
+}
+
+.breakdown-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.875rem;
+}
+
+.breakdown-label {
+    color: var(--text-secondary);
+}
+
+.breakdown-value {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.ability-modifier {
+    text-align: center;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    padding: 0.5rem;
+    background: var(--surface-background);
+    border-radius: 0.25rem;
+}
+
+.free-boosts-section {
+    border-top: 1px solid var(--border-color);
+    padding-top: 2rem;
+}
+
+.free-boosts-section h4 {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-primary);
+}
+
+.free-boosts-section p {
+    margin: 0 0 1rem 0;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.free-boosts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.free-boost-slot {
+    display: flex;
+    flex-direction: column;
+}
+
+.boost-selector {
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    background: white;
+}
+
+.boost-selector:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px var(--primary-color-20);
+}
+
+.loading-spinner {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-secondary);
+}
+</style>

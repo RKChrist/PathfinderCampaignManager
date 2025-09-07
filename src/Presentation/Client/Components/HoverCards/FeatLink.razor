@@ -1,0 +1,48 @@
+@using PathfinderCampaignManager.Domain.Interfaces
+@using PathfinderCampaignManager.Presentation.Client.Services
+@using PathfinderCampaignManager.Presentation.Client.Components.HoverCards
+@inject IHoverCardService HoverCardService
+@inject IJSRuntime JSRuntime
+
+<HoverTrigger CssClass="@($"feat-trigger {CssClass}")"
+              OnHoverStart="OnHoverStartAsync"
+              OnHoverEnd="OnHoverEndAsync"
+              OnClick="OnClickAsync"
+              DelayMs="@HoverDelayMs">
+    @if (!string.IsNullOrEmpty(DisplayText))
+    {
+        @DisplayText
+    }
+    else
+    {
+        @ChildContent
+    }
+</HoverTrigger>
+
+@code {
+    [Parameter] public string FeatId { get; set; } = "";
+    [Parameter] public string DisplayText { get; set; } = "";
+    [Parameter] public string CssClass { get; set; } = "";
+    [Parameter] public int HoverDelayMs { get; set; } = 300;
+    [Parameter] public ICalculatedCharacter? Character { get; set; }
+    [Parameter] public EventCallback<string> OnFeatClicked { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private async Task OnHoverStartAsync(MouseEventArgs e)
+    {
+        if (!string.IsNullOrEmpty(FeatId))
+        {
+            await HoverCardService.ShowFeatCardAsync(FeatId, e.ClientX, e.ClientY, Character);
+        }
+    }
+
+    private async Task OnHoverEndAsync(MouseEventArgs e)
+    {
+        await HoverCardService.ScheduleHideAsync();
+    }
+
+    private async Task OnClickAsync(MouseEventArgs e)
+    {
+        await OnFeatClicked.InvokeAsync(FeatId);
+    }
+}

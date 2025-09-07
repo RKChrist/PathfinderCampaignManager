@@ -1,0 +1,43 @@
+@using PathfinderCampaignManager.Domain.Entities.Auth
+@using PathfinderCampaignManager.Presentation.Client.Attributes
+@using PathfinderCampaignManager.Presentation.Client.Services
+@inject IRoleAuthorizationService AuthService
+
+@if (IsAuthorized)
+{
+    @ChildContent
+}
+else if (ShowUnauthorizedContent && UnauthorizedContent != null)
+{
+    @UnauthorizedContent
+}
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? UnauthorizedContent { get; set; }
+    [Parameter] public UserRole RequiredRole { get; set; } = UserRole.Player;
+    [Parameter] public bool AdminOverride { get; set; } = true;
+    [Parameter] public bool ShowUnauthorizedContent { get; set; } = false;
+
+    private bool IsAuthorized { get; set; } = false;
+    private UserRole CurrentUserRole { get; set; } = UserRole.Player;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckAuthorization();
+        StateHasChanged();
+    }
+
+    private async Task CheckAuthorization()
+    {
+        try
+        {
+            CurrentUserRole = await AuthService.GetCurrentUserRoleAsync();
+            IsAuthorized = await AuthService.IsAuthorizedAsync(RequiredRole, AdminOverride);
+        }
+        catch
+        {
+            IsAuthorized = false;
+        }
+    }
+}

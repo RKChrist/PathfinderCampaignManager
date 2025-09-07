@@ -1,0 +1,209 @@
+@page "/classes/barbarian"
+@using PathfinderCampaignManager.Domain.Entities.Auth
+@using PathfinderCampaignManager.Presentation.Client.Attributes
+@using PathfinderCampaignManager.Presentation.Client.Components.Auth
+
+<PageTitle>Barbarian - Pathfinder Campaign Manager</PageTitle>
+
+<div class="class-page barbarian-page">
+    <div class="class-header">
+        <h1 class="class-title">
+            <i class="class-icon fas fa-axe-battle"></i>
+            Barbarian
+        </h1>
+        <p class="class-subtitle">Rage burns in your heart, and you can tap into that fury to unleash tremendous strength</p>
+    </div>
+
+    <div class="class-content">
+        <!-- Basic Information - Visible to All -->
+        <div class="class-basics card mb-4">
+            <div class="card-header">
+                <h3>Class Overview</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Key Ability:</strong> Strength</p>
+                        <p><strong>Hit Points:</strong> 12 + Con modifier</p>
+                        <p><strong>Primary Saves:</strong> Fortitude, Will</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Skill Increases:</strong> 3 + Int modifier</p>
+                        <p><strong>Weapon Prof:</strong> Simple and martial weapons</p>
+                        <p><strong>Armor Prof:</strong> Light and medium armor</p>
+                    </div>
+                </div>
+                <p class="class-description mt-3">
+                    You fight with primal ferocity. Your rage lets you unleash incredible destructive power 
+                    and grants you mighty resilience against harm.
+                </p>
+            </div>
+        </div>
+
+        <!-- Class Features - Player Visible -->
+        <AuthorizedView RequiredRole="UserRole.Player">
+            <div class="class-features card mb-4">
+                <div class="card-header">
+                    <h3>Key Class Features</h3>
+                </div>
+                <div class="card-body">
+                    <div class="feature mb-3">
+                        <h5>Rage</h5>
+                        <p>You can enter a state of frenzy, gaining bonuses to melee damage and temporary Hit Points, but becoming unable to use concentrate actions.</p>
+                    </div>
+                    <div class="feature mb-3">
+                        <h5>Instinct</h5>
+                        <p>Your barbarian instinct shapes your rage and grants you specialized abilities.</p>
+                        <ul>
+                            <li><strong>Animal Instinct:</strong> You are in tune with the animal within you.</li>
+                            <li><strong>Dragon Instinct:</strong> You summon the fury of a mighty dragon.</li>
+                            <li><strong>Giant Instinct:</strong> You embody the brutal strength and size of a giant.</li>
+                            <li><strong>Spirit Instinct:</strong> You can commune with spirits of the world.</li>
+                            <li><strong>Superstition Instinct:</strong> You distrust magic and develop resistances.</li>
+                        </ul>
+                    </div>
+                    <div class="feature mb-3">
+                        <h5>Deny Advantage</h5>
+                        <p>Your foes struggle to pass your defenses. You aren't flat-footed to hidden, undetected, or flanking creatures of your level or lower.</p>
+                    </div>
+                </div>
+            </div>
+        </AuthorizedView>
+
+        <!-- Character Building Guide - DM and Above -->
+        <AuthorizedView RequiredRole="UserRole.DM">
+            <div class="dm-notes card mb-4">
+                <div class="card-header bg-warning">
+                    <h3><i class="fas fa-eye"></i> DM Notes</h3>
+                </div>
+                <div class="card-body">
+                    <h5>Character Building Recommendations</h5>
+                    <ul>
+                        <li><strong>Ability Scores:</strong> Prioritize Strength, then Constitution and Wisdom</li>
+                        <li><strong>Skills:</strong> Athletics, Intimidation, Acrobatics, Survival are strong choices</li>
+                        <li><strong>Early Feats:</strong> Raging Thrower, Moment of Clarity, or Acute Vision</li>
+                        <li><strong>Equipment:</strong> Two-handed weapons for maximum damage, medium armor</li>
+                    </ul>
+                    
+                    <h5>Roleplay Hooks</h5>
+                    <ul>
+                        <li>Tribal warrior protecting their homeland</li>
+                        <li>Former gladiator seeking freedom</li>
+                        <li>Survivor driven by primal instincts</li>
+                        <li>Noble who abandoned civilization for the wild</li>
+                    </ul>
+
+                    <h5>Combat Tactics</h5>
+                    <ul>
+                        <li>Enter rage on first turn for immediate benefits</li>
+                        <li>Use instinct abilities to maximize effectiveness</li>
+                        <li>Remember rage restrictions on concentrate actions</li>
+                        <li>Manage rage duration carefully (1 minute/10 rounds)</li>
+                    </ul>
+                </div>
+            </div>
+        </AuthorizedView>
+
+        <!-- Advanced Mechanics - Admin Only -->
+        <AuthorizedView RequiredRole="UserRole.Admin">
+            <div class="admin-content card mb-4">
+                <div class="card-header bg-danger text-white">
+                    <h3><i class="fas fa-cog"></i> Admin Content</h3>
+                </div>
+                <div class="card-body">
+                    <h5>Advanced Barbarian Mechanics</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Rage Scaling</h6>
+                            <ul>
+                                <li>Rage damage: +2 at 1st, +3 at 7th, +4 at 15th</li>
+                                <li>Temp HP: Con modifier + half level</li>
+                                <li>Uses per day: 1 + Con modifier</li>
+                                <li>Duration: 1 minute (10 rounds)</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Instinct Benefits by Level</h6>
+                            <ul>
+                                <li>1st: Instinct ability and anathema</li>
+                                <li>3rd: Instinct specialization</li>
+                                <li>7th: Instinct's greater specialization</li>
+                                <li>15th: Greater instinct specialization</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <h6>Common Rules Questions</h6>
+                    <div class="alert alert-info">
+                        <ul class="mb-0">
+                            <li>Can I cast spells while raging? No, spells have the concentrate trait</li>
+                            <li>Does rage end if I fall unconscious? Yes, rage ends immediately</li>
+                            <li>Can I use focus spells while raging? No, they also have concentrate</li>
+                            <li>Do I lose rage if I don't attack? Only if you don't damage a hostile creature or take damage</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </AuthorizedView>
+
+        <!-- Character Creation Tools -->
+        <div class="character-tools card">
+            <div class="card-header">
+                <h3>Character Creation</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <a href="/character-wizard?class=barbarian" class="btn btn-primary btn-lg w-100 mb-2">
+                            <i class="fas fa-magic"></i> Create Barbarian Character
+                        </a>
+                    </div>
+                    <div class="col-md-6">
+                        <a href="/classes" class="btn btn-outline-secondary btn-lg w-100 mb-2">
+                            <i class="fas fa-list"></i> View All Classes
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .barbarian-page {
+        background: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 100%);
+        min-height: 100vh;
+        padding: 20px;
+    }
+
+    .class-header {
+        text-align: center;
+        margin-bottom: 2rem;
+        background: white;
+        padding: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .class-title {
+        color: #d63031;
+        font-size: 3rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .class-icon {
+        color: #e17055;
+        margin-right: 15px;
+    }
+
+    .class-subtitle {
+        color: #666;
+        font-style: italic;
+        font-size: 1.2rem;
+    }
+
+    .feature h5 {
+        color: #d63031;
+        font-weight: bold;
+    }
+</style>

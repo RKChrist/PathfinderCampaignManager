@@ -1,0 +1,366 @@
+@page "/rules/quick-reference"
+@using PathfinderCampaignManager.Domain.Entities.Auth
+@using PathfinderCampaignManager.Presentation.Client.Attributes
+@using PathfinderCampaignManager.Presentation.Client.Components.Auth
+
+[DMOnly]
+<PageTitle>Quick Rules Reference - DM Tools</PageTitle>
+
+<div class="rules-reference">
+    <div class="page-header">
+        <h1><i class="fas fa-book"></i> Pathfinder 2E Quick Rules Reference</h1>
+        <p class="lead">Essential rules and mechanics for quick lookup during gameplay</p>
+    </div>
+
+    <div class="rules-grid">
+        <!-- Basic Mechanics -->
+        <div class="rule-section card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h3><i class="fas fa-dice-d20"></i> Basic Mechanics</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Basic Roll</h5>
+                        <p><strong>d20 + modifier vs DC</strong></p>
+                        <ul>
+                            <li>Success: Meet or exceed DC</li>
+                            <li>Critical Success: Exceed DC by 10+</li>
+                            <li>Critical Failure: Fail DC by 10+ or natural 1</li>
+                        </ul>
+
+                        <h5>Difficulty Classes</h5>
+                        <ul>
+                            <li><strong>Untrained:</strong> DC 10</li>
+                            <li><strong>Trained:</strong> DC 15</li>
+                            <li><strong>Expert:</strong> DC 20</li>
+                            <li><strong>Master:</strong> DC 25</li>
+                            <li><strong>Legendary:</strong> DC 30</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Action Economy</h5>
+                        <ul>
+                            <li><strong>3 Actions:</strong> Per turn</li>
+                            <li><strong>1 Reaction:</strong> Per round</li>
+                            <li><strong>Free Actions:</strong> Unlimited (within reason)</li>
+                        </ul>
+
+                        <h5>Multiple Attack Penalty</h5>
+                        <ul>
+                            <li><strong>1st Attack:</strong> No penalty</li>
+                            <li><strong>2nd Attack:</strong> -5 penalty</li>
+                            <li><strong>3rd Attack:</strong> -10 penalty</li>
+                            <li><em>Agile weapons: -4/-8 instead</em></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Combat -->
+        <div class="rule-section card mb-4">
+            <div class="card-header bg-danger text-white">
+                <h3><i class="fas fa-sword"></i> Combat</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Initiative</h5>
+                        <p><strong>Perception + modifiers</strong></p>
+                        <p>Act in order from highest to lowest</p>
+
+                        <h5>Attack Roll</h5>
+                        <p><strong>d20 + attack bonus vs AC</strong></p>
+                        <ul>
+                            <li><strong>Hit:</strong> Roll damage</li>
+                            <li><strong>Crit:</strong> Double damage dice</li>
+                            <li><strong>Miss:</strong> No damage</li>
+                        </ul>
+
+                        <h5>Conditions</h5>
+                        <ul>
+                            <li><strong>Flat-footed:</strong> -2 AC</li>
+                            <li><strong>Frightened X:</strong> -X to all checks</li>
+                            <li><strong>Prone:</strong> -2 attack, flat-footed to melee</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Basic Actions (1 Action Each)</h5>
+                        <ul>
+                            <li><strong>Strike:</strong> Make an attack</li>
+                            <li><strong>Stride:</strong> Move your Speed</li>
+                            <li><strong>Step:</strong> Move 5 feet (doesn't trigger reactions)</li>
+                            <li><strong>Seek:</strong> Look for hidden creatures</li>
+                            <li><strong>Interact:</strong> Use an item or object</li>
+                        </ul>
+
+                        <h5>Movement in Combat</h5>
+                        <ul>
+                            <li><strong>Base Speed:</strong> Usually 25-30 feet</li>
+                            <li><strong>Difficult Terrain:</strong> Extra movement cost</li>
+                            <li><strong>Opportunity Attacks:</strong> Rare, mostly Fighters</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Spellcasting -->
+        <div class="rule-section card mb-4">
+            <div class="card-header bg-info text-white">
+                <h3><i class="fas fa-magic"></i> Spellcasting</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Spell Attack Roll</h5>
+                        <p><strong>d20 + spell attack bonus vs AC</strong></p>
+
+                        <h5>Spell Save DC</h5>
+                        <p><strong>10 + spell attack bonus</strong></p>
+
+                        <h5>Spell Traditions</h5>
+                        <ul>
+                            <li><strong>Arcane:</strong> Wizard, Sorcerer</li>
+                            <li><strong>Divine:</strong> Cleric, Champion</li>
+                            <li><strong>Occult:</strong> Bard, Witch</li>
+                            <li><strong>Primal:</strong> Druid, Ranger</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Casting Actions</h5>
+                        <ul>
+                            <li><strong>1 Action:</strong> Most cantrips</li>
+                            <li><strong>2 Actions:</strong> Most spells</li>
+                            <li><strong>3 Actions:</strong> Some powerful spells</li>
+                            <li><strong>Reaction:</strong> Some defensive spells</li>
+                        </ul>
+
+                        <h5>Heightening</h5>
+                        <p>Cast spells using higher-level slots for increased effects</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Skills -->
+        <div class="rule-section card mb-4">
+            <div class="card-header bg-success text-white">
+                <h3><i class="fas fa-tools"></i> Skills</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Common DCs by Level</h5>
+                        <ul>
+                            <li><strong>Level 0:</strong> DC 14</li>
+                            <li><strong>Level 1:</strong> DC 15</li>
+                            <li><strong>Level 2:</strong> DC 16</li>
+                            <li><strong>Level 3:</strong> DC 18</li>
+                            <li><strong>Level 4:</strong> DC 19</li>
+                            <li><strong>Level 5:</strong> DC 20</li>
+                        </ul>
+
+                        <h5>Skill Actions</h5>
+                        <ul>
+                            <li><strong>Recall Knowledge:</strong> 1 action</li>
+                            <li><strong>Seek:</strong> 1 action</li>
+                            <li><strong>Hide:</strong> 1 action</li>
+                            <li><strong>Sneak:</strong> 1 action</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Exploration Activities</h5>
+                        <ul>
+                            <li><strong>Avoid Notice:</strong> Stealth while traveling</li>
+                            <li><strong>Detect Magic:</strong> Find magical auras</li>
+                            <li><strong>Follow the Expert:</strong> Use ally's result</li>
+                            <li><strong>Investigate:</strong> Look for clues</li>
+                            <li><strong>Scout:</strong> Range ahead</li>
+                        </ul>
+
+                        <h5>Rest and Recovery</h5>
+                        <ul>
+                            <li><strong>Treat Wounds:</strong> 10 min, heal HP</li>
+                            <li><strong>Short Rest:</strong> 10 min, refocus</li>
+                            <li><strong>Long Rest:</strong> 8 hours, full recovery</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conditions Reference -->
+        <div class="rule-section card mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h3><i class="fas fa-exclamation-triangle"></i> Common Conditions</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <h6>Movement</h6>
+                        <ul>
+                            <li><strong>Prone:</strong> Lying down, -2 to attack</li>
+                            <li><strong>Grabbed:</strong> Can't move away</li>
+                            <li><strong>Immobilized:</strong> Can't use move actions</li>
+                            <li><strong>Restrained:</strong> Can't move or attack</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4">
+                        <h6>Mental</h6>
+                        <ul>
+                            <li><strong>Frightened X:</strong> -X to all checks</li>
+                            <li><strong>Stunned X:</strong> Lose X actions</li>
+                            <li><strong>Confused:</strong> Random actions</li>
+                            <li><strong>Fascinated:</strong> Can only Sustain or end</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4">
+                        <h6>Physical</h6>
+                        <ul>
+                            <li><strong>Blinded:</strong> Can't see, all flat-footed</li>
+                            <li><strong>Deafened:</strong> Can't hear, -2 initiative</li>
+                            <li><strong>Sickened X:</strong> -X to checks, must retch</li>
+                            <li><strong>Fatigued:</strong> -1 to AC and saves</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Tables -->
+        <div class="rule-section card">
+            <div class="card-header bg-secondary text-white">
+                <h3><i class="fas fa-table"></i> Quick Reference Tables</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Cover</h5>
+                        <ul>
+                            <li><strong>Lesser Cover:</strong> +1 AC</li>
+                            <li><strong>Standard Cover:</strong> +2 AC, +1 Reflex</li>
+                            <li><strong>Greater Cover:</strong> +4 AC, +2 Reflex</li>
+                        </ul>
+
+                        <h5>Concealment</h5>
+                        <ul>
+                            <li><strong>Concealed:</strong> DC 5 flat check to target</li>
+                            <li><strong>Hidden:</strong> DC 11 flat check to target</li>
+                            <li><strong>Undetected:</strong> Must Seek to find</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Size Modifiers</h5>
+                        <ul>
+                            <li><strong>Tiny:</strong> -2 AC, +2 Stealth</li>
+                            <li><strong>Small/Medium:</strong> No modifier</li>
+                            <li><strong>Large:</strong> +1 AC, -1 Stealth</li>
+                            <li><strong>Huge:</strong> +2 AC, -2 Stealth</li>
+                        </ul>
+
+                        <h5>Death and Dying</h5>
+                        <ul>
+                            <li><strong>0 HP:</strong> Dying 1 (unconscious)</li>
+                            <li><strong>Dying 4:</strong> Death</li>
+                            <li><strong>Recovery Check:</strong> DC 10 + dying value</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Filters -->
+    <AuthorizedView RequiredRole="UserRole.Admin">
+        <div class="admin-tools card mt-4">
+            <div class="card-header bg-dark text-white">
+                <h3><i class="fas fa-cogs"></i> Admin Quick Tools</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <a href="/rules/equipment" class="btn btn-primary btn-lg w-100 mb-2">
+                            <i class="fas fa-shield-alt"></i> Equipment Reference
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="/spells" class="btn btn-primary btn-lg w-100 mb-2">
+                            <i class="fas fa-magic"></i> Spell Database
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="/monsters" class="btn btn-primary btn-lg w-100 mb-2">
+                            <i class="fas fa-dragon"></i> Monster Manual
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="/combat-tracker" class="btn btn-primary btn-lg w-100 mb-2">
+                            <i class="fas fa-swords"></i> Combat Tracker
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </AuthorizedView>
+</div>
+
+<style>
+    .rules-reference {
+        padding: 20px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        min-height: 100vh;
+    }
+
+    .page-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .page-header h1 {
+        color: #495057;
+        margin-bottom: 1rem;
+    }
+
+    .rule-section {
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: transform 0.2s ease;
+    }
+
+    .rule-section:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+
+    .card-header h3 {
+        margin: 0;
+        font-size: 1.3rem;
+    }
+
+    .card-body h5 {
+        color: #495057;
+        margin-top: 1rem;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+    }
+
+    .card-body h6 {
+        color: #6c757d;
+        margin-top: 0.75rem;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+    }
+
+    .card-body ul {
+        margin-bottom: 1rem;
+    }
+
+    .card-body ul li {
+        margin-bottom: 0.25rem;
+    }
+
+    .admin-tools {
+        border: 2px solid #28a745;
+    }
+</style>
