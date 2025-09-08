@@ -8,7 +8,10 @@ public partial class CharacterBuilder : ComponentBase
 {
     [Parameter] public Guid? CharacterId { get; set; }
     
-    protected PfCharacter Character { get; set; } = new();
+    protected PfCharacter Character { get; set; } = new()
+    {
+        AbilityScores = new PfAbilityScores()
+    };
     protected int ActiveStep { get; set; } = 0;
     protected string AbilityMethod { get; set; } = "array";
     
@@ -190,6 +193,12 @@ public partial class CharacterBuilder : ComponentBase
             Character.Skills.Add(skill);
         }
         return skill;
+    }
+
+    protected string GetModifierText(int score)
+    {
+        var modifier = (score - 10) / 2;
+        return modifier >= 0 ? $"+{modifier}" : modifier.ToString();
     }
 
     protected async Task SaveCharacter()

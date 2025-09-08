@@ -2,10 +2,13 @@
 @page "/join/{joinToken:guid}"
 @using PathfinderCampaignManager.Application.Campaigns.Commands
 @using PathfinderCampaignManager.Presentation.Client.Components.Auth
+@using PathfinderCampaignManager.Presentation.Client.Services
+@using PathfinderCampaignManager.Presentation.Client.Store.Auth
 @using System.ComponentModel.DataAnnotations
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
+@inject IAuthenticationService AuthService
 
 <PageTitle>Join Campaign</PageTitle>
 
@@ -653,10 +656,17 @@
 
         try
         {
+            var userId = await GetCurrentUserIdAsync();
+            if (userId == Guid.Empty)
+            {
+                aliasError = "Unable to identify current user. Please try logging out and back in.";
+                return;
+            }
+
             var request = new JoinCampaignRequest
             {
                 JoinToken = JoinToken.Value,
-                UserId = GetCurrentUserId(), // In real app, get from auth
+                UserId = userId,
                 Alias = joinModel.Alias?.Trim() ?? ""
             };
 
@@ -736,10 +746,10 @@
         return "just now";
     }
 
-    private Guid GetCurrentUserId()
+    private async Task<Guid> GetCurrentUserIdAsync()
     {
-        // In a real implementation, get from authentication context
-        return Guid.NewGuid();
+        var currentUser = await AuthService.GetCurrentUserAsync();
+        return currentUser?.Id ?? Guid.Empty;
     }
 
     public class JoinModel

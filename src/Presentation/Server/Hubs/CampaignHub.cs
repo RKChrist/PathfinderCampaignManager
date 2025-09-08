@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using PathfinderCampaignManager.Presentation.Shared.Models;
 using System.Collections.Concurrent;
 
 namespace PathfinderCampaignManager.Presentation.Server.Hubs;
 
+[AllowAnonymous]
 public class CampaignHub : Hub
 {
     private static readonly ConcurrentDictionary<string, CampaignSession> CampaignSessions = new();

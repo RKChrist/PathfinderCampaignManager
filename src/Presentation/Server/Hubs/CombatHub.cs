@@ -1,27 +1,71 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using PathfinderCampaignManager.Presentation.Shared.Models;
 using System.Collections.Concurrent;
 
 namespace PathfinderCampaignManager.Presentation.Server.Hubs;
 
+[AllowAnonymous]
 public class CombatHub : Hub
 {
     private static readonly ConcurrentDictionary<string, CombatSession> CombatSessions = new();
-    private readonly IHubContext<CampaignHub> _campaignHubContext;
 
-    public CombatHub(IHubContext<CampaignHub> campaignHubContext)
+    public CombatHub()
     {
-        _campaignHubContext = campaignHubContext;
+    }
+
+    public async Task Ping()
+    {
+        try
+        {
+            Console.WriteLine("Ping method called");
+            await Clients.Caller.SendAsync("Pong", "Connection is working");
+            Console.WriteLine("Pong sent successfully");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ping failed: {ex}");
+            throw;
+        }
     }
 
     public async Task JoinCombat(string combatId, string? campaignId = null)
     {
-        await Groups.AddToGroupAsync(Context.ConnectionId, $"Combat-{combatId}");
-        
-        // Send current combat state to the joining user
-        if (CombatSessions.TryGetValue(combatId, out var session))
+        try
         {
-            await Clients.Caller.SendAsync("CombatStateUpdated", session);
+            Console.WriteLine($"JoinCombat called with combatId: {combatId}, campaignId: {campaignId}");
+            Console.WriteLine($"Connection ID: {Context.ConnectionId}");
+            
+            await Groups.AddToGroupAsync(Context.ConnectionId, $"Combat-{combatId}");
+            Console.WriteLine($"Added to group: Combat-{combatId}");
+            
+            // Send current combat state to the joining user
+            if (CombatSessions.TryGetValue(combatId, out var session))
+            {
+                Console.WriteLine($"Sending existing combat state for session: {session.Name}");
+                try
+                {
+                    await Clients.Caller.SendAsync("CombatStateUpdated", session);
+                    Console.WriteLine("CombatStateUpdated sent successfully");
+                }
+                catch (Exception sessionEx)
+                {
+                    Console.WriteLine($"Failed to send CombatStateUpdated: {sessionEx}");
+                    throw;
+                }
+            }
+            else
+            {
+                Console.WriteLine($"No existing combat session found for ID: {combatId}");
+            }
+            
+            Console.WriteLine("JoinCombat completed successfully");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"JoinCombat failed: {ex}");
+            await Clients.Caller.SendAsync("Error", $"Failed to join combat: {ex.Message}");
+            throw;
         }
     }
 
@@ -209,40 +253,64 @@ public class CombatHub : Hub
 
     public async Task SendCombatMessage(string combatId, string message, string messageType = "action")
     {
-        var userName = Context.User?.Identity?.Name ?? "Unknown";
-        
-        await Clients.Group($"Combat-{combatId}").SendAsync("CombatMessageReceived", new
+        try
         {
-            Message = message,
-            Type = messageType, // "action", "damage", "heal", "system", "chat"
-            Sender = userName,
-            Timestamp = DateTime.UtcNow
-        });
+            var userName = Context.User?.Identity?.Name ?? "Unknown";
+            
+            await Clients.Group($"Combat-{combatId}").SendAsync("CombatMessageReceived", new
+            {
+                Message = message,
+                Type = messageType, // "action", "damage", "heal", "system", "chat"
+                Sender = userName,
+                Timestamp = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            await Clients.Caller.SendAsync("Error", $"Failed to send combat message: {ex.Message}");
+            throw;
+        }
     }
 
     public async Task RequestReroll(string combatId, string rollType, string reason)
     {
-        var userName = Context.User?.Identity?.Name ?? "Unknown";
-        
-        await Clients.Group($"Combat-{combatId}").SendAsync("RerollRequested", new
+        try
         {
-            RollType = rollType,
-            Reason = reason,
-            RequestedBy = userName,
-            Timestamp = DateTime.UtcNow
-        });
+            var userName = Context.User?.Identity?.Name ?? "Unknown";
+            
+            await Clients.Group($"Combat-{combatId}").SendAsync("RerollRequested", new
+            {
+                RollType = rollType,
+                Reason = reason,
+                RequestedBy = userName,
+                Timestamp = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            await Clients.Caller.SendAsync("Error", $"Failed to request reroll: {ex.Message}");
+            throw;
+        }
     }
 
     public async Task ShareDiceRoll(string combatId, object rollResult)
     {
-        var userName = Context.User?.Identity?.Name ?? "Unknown";
-        
-        await Clients.Group($"Combat-{combatId}").SendAsync("DiceRollShared", new
+        try
         {
-            Roll = rollResult,
-            RolledBy = userName,
-            Timestamp = DateTime.UtcNow
-        });
+            var userName = Context.User?.Identity?.Name ?? "Unknown";
+            
+            await Clients.Group($"Combat-{combatId}").SendAsync("DiceRollShared", new
+            {
+                Roll = rollResult,
+                RolledBy = userName,
+                Timestamp = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            await Clients.Caller.SendAsync("Error", $"Failed to share dice roll: {ex.Message}");
+            throw;
+        }
     }
 
     public async Task UpdateCombatMap(string combatId, object mapData)

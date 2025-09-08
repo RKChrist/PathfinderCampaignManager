@@ -69,7 +69,7 @@ builder.Services.AddAuthentication(options =>
         {
             var accessToken = context.Request.Query["access_token"];
             var path = context.HttpContext.Request.Path;
-            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/combathub"))
+            if (!string.IsNullOrEmpty(accessToken) && (path.StartsWithSegments("/combathub") || path.StartsWithSegments("/campaignhub")))
             {
                 context.Token = accessToken;
             }
@@ -88,7 +88,8 @@ builder.Services.AddCors(options =>
         policy.WithOrigins("https://localhost:7082", "http://localhost:7082")
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials();
+              .AllowCredentials()
+              .SetIsOriginAllowedToAllowWildcardSubdomains();
     });
 });
 

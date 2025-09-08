@@ -3,9 +3,11 @@
 @using PathfinderCampaignManager.Domain.Enums
 @using PathfinderCampaignManager.Domain.Interfaces
 @using PathfinderCampaignManager.Presentation.Client.Components.Auth
+@using PathfinderCampaignManager.Presentation.Client.Services
 @inject IJSRuntime JSRuntime
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject PathfinderApiService PathfinderApi
 
 <PageTitle>Character Wizard</PageTitle>
 
@@ -758,13 +760,13 @@
             switch (WizardSteps[currentStepIndex].Id)
             {
                 case "ancestry":
-                    // ancestryOptions = await LoadAncestryOptions();
+                    ancestryOptions = await LoadAncestryOptions();
                     break;
                 case "background":
-                    // backgroundOptions = await LoadBackgroundOptions();
+                    backgroundOptions = await LoadBackgroundOptions();
                     break;
                 case "class":
-                    // classOptions = await LoadClassOptions();
+                    classOptions = await LoadClassOptions();
                     break;
             }
             
@@ -1014,6 +1016,69 @@
             new("Wizard", "class", "Wizard", "Master of magic", 75, new[] {"Spellcaster", "Complex"}),
             new("Rogue", "class", "Rogue", "Skilled infiltrator", 80, new[] {"Skills", "Damage"})
         };
+    }
+
+    private async Task<List<object>> LoadAncestryOptions()
+    {
+        try
+        {
+            var result = await PathfinderApi.GetAncestriesAsync();
+            return result.Match(
+                ancestries => ancestries.Cast<object>().ToList(),
+                error =>
+                {
+                    Console.WriteLine($"Failed to load ancestries: {error.Message}");
+                    return new List<object>();
+                }
+            );
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception loading ancestries: {ex.Message}");
+            return new List<object>();
+        }
+    }
+
+    private async Task<List<object>> LoadBackgroundOptions()
+    {
+        try
+        {
+            var result = await PathfinderApi.GetBackgroundsAsync();
+            return result.Match(
+                backgrounds => backgrounds.Cast<object>().ToList(),
+                error =>
+                {
+                    Console.WriteLine($"Failed to load backgrounds: {error.Message}");
+                    return new List<object>();
+                }
+            );
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception loading backgrounds: {ex.Message}");
+            return new List<object>();
+        }
+    }
+
+    private async Task<List<object>> LoadClassOptions()
+    {
+        try
+        {
+            var result = await PathfinderApi.GetClassesAsync();
+            return result.Match(
+                classes => classes.Cast<object>().ToList(),
+                error =>
+                {
+                    Console.WriteLine($"Failed to load classes: {error.Message}");
+                    return new List<object>();
+                }
+            );
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception loading classes: {ex.Message}");
+            return new List<object>();
+        }
     }
 
     private List<CharacterPreset> GetCharacterPresets()

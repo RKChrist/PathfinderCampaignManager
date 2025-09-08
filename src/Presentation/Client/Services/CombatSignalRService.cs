@@ -15,7 +15,7 @@ public class CombatSignalRService : IAsyncDisposable
 
     public async Task InitializeAsync(string? accessToken = null)
     {
-        var baseAddress = _httpClient.BaseAddress?.ToString().TrimEnd('/') ?? "http://localhost:7082";
+        var baseAddress = _httpClient.BaseAddress?.ToString().TrimEnd('/') ?? "https://localhost:7082";
         var hubUrl = $"{baseAddress}/combathub";
         
         Console.WriteLine($"Initializing SignalR connection to: {hubUrl}");
@@ -27,22 +27,57 @@ public class CombatSignalRService : IAsyncDisposable
                 {
                     options.AccessTokenProvider = () => Task.FromResult(accessToken);
                 }
-                // Note: UseDefaultCredentials is not supported in Blazor WebAssembly
-                // Authentication should be handled via access tokens instead
+                // Configure for CORS and Blazor WebAssembly - allow fallback transports
+                options.Transports = Microsoft.AspNetCore.Http.Connections.HttpTransportType.WebSockets | 
+                                    Microsoft.AspNetCore.Http.Connections.HttpTransportType.LongPolling;
             })
-            .WithAutomaticReconnect()
+            .WithAutomaticReconnect(new[] { TimeSpan.Zero, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(10) })
             .Build();
 
         Console.WriteLine("Starting SignalR connection...");
-        await _hubConnection.StartAsync();
-        Console.WriteLine($"SignalR connection state: {_hubConnection.State}");
+        
+        // Add connection state event handlers
+        _hubConnection.Closed += async (error) =>
+        {
+            Console.WriteLine($"SignalR connection closed. Error: {error?.Message}");
+        };
+
+        _hubConnection.Reconnecting += async (error) =>
+        {
+            Console.WriteLine($"SignalR reconnecting. Error: {error?.Message}");
+        };
+
+        _hubConnection.Reconnected += async (connectionId) =>
+        {
+            Console.WriteLine($"SignalR reconnected. Connection ID: {connectionId}");
+        };
+
+        try
+        {
+            await _hubConnection.StartAsync();
+            Console.WriteLine($"SignalR connection state: {_hubConnection.State}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to start SignalR connection: {ex.Message}");
+            Console.WriteLine($"Full exception: {ex}");
+            throw;
+        }
     }
 
-    public async Task JoinCombatAsync(string combatId)
+    public async Task PingAsync()
     {
         if (_hubConnection?.State == HubConnectionState.Connected)
         {
-            await _hubConnection.InvokeAsync("JoinCombat", combatId);
+            await _hubConnection.InvokeAsync("Ping");
+        }
+    }
+
+    public async Task JoinCombatAsync(string combatId, string? campaignId = null)
+    {
+        if (_hubConnection?.State == HubConnectionState.Connected)
+        {
+            await _hubConnection.InvokeAsync("JoinCombat", combatId, campaignId);
         }
     }
 
@@ -320,6 +355,16 @@ public class CombatSignalRService : IAsyncDisposable
         _hubConnection.On<CombatSession>("CombatResumed", (session) =>
         {
             OnCombatResumed?.Invoke(session);
+        });
+
+        _hubConnection.On<string>("Pong", (message) =>
+        {
+            Console.WriteLine($"Received Pong: {message}");
+        });
+
+        _hubConnection.On<string>("Error", (errorMessage) =>
+        {
+            Console.WriteLine($"SignalR Error: {errorMessage}");
         });
     }
 

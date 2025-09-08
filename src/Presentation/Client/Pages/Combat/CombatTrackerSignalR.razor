@@ -1,4 +1,5 @@
 @page "/combat-signalr/{combatId:guid?}"
+@page "/combat-signalr"
 @using PathfinderCampaignManager.Presentation.Client.Services
 @using PathfinderCampaignManager.Presentation.Shared.Models
 @using System.ComponentModel.DataAnnotations
@@ -50,10 +51,19 @@
                     End Combat
                 </button>
             }
-            <button class="btn btn-outline-primary" @onclick="ShowAddParticipantModal">
-                <i class="fas fa-plus me-1"></i>
-                Add Participant
-            </button>
+            <div class="btn-group">
+                <button class="btn btn-outline-primary" @onclick="ShowAddParticipantModal">
+                    <i class="fas fa-plus me-1"></i>
+                    Add Participant
+                </button>
+                @if (CampaignId.HasValue)
+                {
+                    <button class="btn btn-outline-warning" @onclick="ResetCombat" title="Reset to NPCs only">
+                        <i class="fas fa-refresh me-1"></i>
+                        Reset
+                    </button>
+                }
+            </div>
         </div>
     </div>
 
@@ -64,9 +74,10 @@
                 <h5 class="mb-0">Initiative Order</h5>
             </div>
             <div class="list-group list-group-flush">
-                @foreach (var participant in _session.Participants)
+                @foreach (var participant in _session.Participants.OrderByDescending(p => p.Initiative))
                 {
-                    var isCurrentTurn = _session.IsActive && _session.Participants.IndexOf(participant) == _session.CurrentTurn;
+                    var participantIndex = _session.Participants.OrderByDescending(p => p.Initiative).ToList().IndexOf(participant);
+                    var isCurrentTurn = _session.IsActive && participantIndex == _session.CurrentTurn;
                     <div class="list-group-item @(isCurrentTurn ? "list-group-item-warning" : "")">
                         <div class="row align-items-center">
                             <div class="col-md-3">
@@ -176,6 +187,46 @@
                     <button type="button" class="btn-close" @onclick="HideAddParticipantModal"></button>
                 </div>
                 <div class="modal-body">
+                    @if (CampaignId.HasValue && (_campaignCharacters.Any() || _campaignNpcs.Any()))
+                    {
+                        <div class="mb-4">
+                            <h6>Quick Add from Campaign</h6>
+                            @if (_campaignCharacters.Any())
+                            {
+                                <div class="mb-3">
+                                    <label class="form-label">Player Characters</label>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        @foreach (var character in _campaignCharacters)
+                                        {
+                                            <button type="button" class="btn btn-outline-info btn-sm" 
+                                                    @onclick="() => QuickAddCharacter(character)">
+                                                <i class="fas fa-user me-1"></i>
+                                                @character.Name
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                            @if (_campaignNpcs.Any())
+                            {
+                                <div class="mb-3">
+                                    <label class="form-label">NPCs & Monsters</label>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        @foreach (var npc in _campaignNpcs)
+                                        {
+                                            <button type="button" class="btn btn-outline-warning btn-sm"
+                                                    @onclick="() => QuickAddNpc(npc)">
+                                                <i class="fas @(npc.IsNpc ? "fa-user-tie" : "fa-dragon") me-1"></i>
+                                                @npc.Name
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                            <hr />
+                        </div>
+                    }
+
                     <EditForm Model="@_addParticipantModel" OnValidSubmit="@AddParticipant">
                         <DataAnnotationsValidator />
                         
@@ -250,18 +301,28 @@
 
 @code {
     [Parameter] public Guid? CombatId { get; set; }
+    [Parameter] [SupplyParameterFromQuery] public Guid? CampaignId { get; set; }
 
     private CombatSession? _session = new CombatSession { Participants = new List<CombatParticipant>() };
     private bool _isConnected = false;
     private string _errorMessage = string.Empty;
     private bool _showAddModal = false;
     private AddParticipantModel _addParticipantModel = new();
+    private List<CampaignCharacter> _campaignCharacters = new();
+    private List<NpcMonster> _campaignNpcs = new();
+    private bool _isLoadingCampaignData = false;
 
     protected override async Task OnInitializedAsync()
     {
         if (CombatId == null)
         {
             CombatId = Guid.NewGuid();
+        }
+
+        // Load campaign data if joining from a campaign
+        if (CampaignId.HasValue)
+        {
+            await LoadCampaignData();
         }
 
         try
@@ -286,13 +347,28 @@
             
             if (_isConnected)
             {
-                _errorMessage = "Joining combat session...";
+                _errorMessage = "Testing connection...";
                 StateHasChanged();
                 
-                await SignalRService.JoinCombatAsync(CombatId.ToString()!);
-                
-                _errorMessage = string.Empty;
-                StateHasChanged();
+                // First test with ping
+                try
+                {
+                    await SignalRService.PingAsync();
+                    Console.WriteLine("Ping successful");
+                    
+                    _errorMessage = "Joining combat session...";
+                    StateHasChanged();
+                    
+                    await SignalRService.JoinCombatAsync(CombatId.ToString()!, null);
+                    
+                    _errorMessage = string.Empty;
+                    StateHasChanged();
+                }
+                catch (Exception pingEx)
+                {
+                    _errorMessage = $"Connection test failed: {pingEx.Message}";
+                    Console.WriteLine($"Ping failed: {pingEx}");
+                }
             }
             else
             {
@@ -327,6 +403,139 @@
         catch (Exception ex)
         {
             _errorMessage = $"Failed to update hit points: {ex.Message}";
+        }
+    }
+
+    private async Task LoadCampaignData()
+    {
+        if (!CampaignId.HasValue) return;
+
+        _isLoadingCampaignData = true;
+        try
+        {
+            // Load campaign characters - mock data for now
+            _campaignCharacters = new List<CampaignCharacter>
+            {
+                new() { Id = Guid.NewGuid(), Name = "Aelindra", Class = "Ranger", Level = 3, HitPoints = 28 },
+                new() { Id = Guid.NewGuid(), Name = "Thorik", Class = "Fighter", Level = 3, HitPoints = 35 },
+                new() { Id = Guid.NewGuid(), Name = "Lyra", Class = "Wizard", Level = 3, HitPoints = 20 }
+            };
+
+            // Load campaign NPCs/Monsters - mock data for now
+            _campaignNpcs = new List<NpcMonster>
+            {
+                new() { Id = Guid.NewGuid(), Name = "Goblin Warrior", IsNpc = false, HitPoints = 18, ArmorClass = 15 },
+                new() { Id = Guid.NewGuid(), Name = "Orc Brute", IsNpc = false, HitPoints = 25, ArmorClass = 13 },
+                new() { Id = Guid.NewGuid(), Name = "Town Guard", IsNpc = true, HitPoints = 22, ArmorClass = 16 }
+            };
+
+            // Auto-populate NPCs into combat if this is a new combat session
+            if (_session?.Participants.Count == 0 && _campaignNpcs.Any())
+            {
+                await AutoPopulateNpcs();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to load campaign data: {ex.Message}");
+        }
+        finally
+        {
+            _isLoadingCampaignData = false;
+        }
+    }
+
+    private async Task AutoPopulateNpcs()
+    {
+        if (_session == null) return;
+
+        foreach (var npc in _campaignNpcs.Take(5)) // Limit to 5 NPCs to avoid overwhelming
+        {
+            var participant = new CombatParticipant
+            {
+                Id = Guid.NewGuid(),
+                Name = npc.Name,
+                Type = npc.IsNpc ? "NPC" : "Monster",
+                HitPoints = npc.HitPoints,
+                CurrentHitPoints = npc.HitPoints,
+                ArmorClass = npc.ArmorClass,
+                Initiative = 0, // Will be rolled later
+                IsPlayerCharacter = false,
+                CharacterId = npc.Id.ToString()
+            };
+
+            _session.Participants.Add(participant);
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task ResetCombat()
+    {
+        if (_session == null) return;
+
+        _session.Participants.Clear();
+        _session.IsActive = false;
+        _session.IsPaused = false;
+        _session.CurrentTurn = 0;
+        _session.Round = 1;
+
+        // Re-populate NPCs if from campaign
+        if (CampaignId.HasValue && _campaignNpcs.Any())
+        {
+            await AutoPopulateNpcs();
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task QuickAddCharacter(CampaignCharacter character)
+    {
+        try
+        {
+            var participant = new CombatParticipant
+            {
+                Name = character.Name,
+                Type = "PC",
+                Initiative = 10, // Default initiative
+                HitPoints = character.HitPoints,
+                CurrentHitPoints = character.HitPoints,
+                ArmorClass = character.ArmorClass,
+                IsPlayerCharacter = true,
+                CharacterId = character.Id.ToString()
+            };
+
+            await SignalRService.AddParticipantAsync(CombatId.ToString()!, participant);
+            HideAddParticipantModal();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to add participant: {ex.Message}";
+        }
+    }
+
+    private async Task QuickAddNpc(NpcMonster npc)
+    {
+        try
+        {
+            var participant = new CombatParticipant
+            {
+                Name = npc.Name,
+                Type = npc.IsNpc ? "NPC" : "Monster",
+                Initiative = npc.Initiative,
+                HitPoints = npc.HitPoints,
+                CurrentHitPoints = npc.HitPoints,
+                ArmorClass = npc.ArmorClass,
+                IsPlayerCharacter = false,
+                CharacterId = npc.Id.ToString()
+            };
+
+            await SignalRService.AddParticipantAsync(CombatId.ToString()!, participant);
+            HideAddParticipantModal();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to add participant: {ex.Message}";
         }
     }
 
@@ -503,5 +712,25 @@
         public int Fortitude { get; set; } = 10;
         public int Reflex { get; set; } = 10;
         public int Will { get; set; } = 10;
+    }
+
+    public class CampaignCharacter
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Class { get; set; } = string.Empty;
+        public int Level { get; set; } = 1;
+        public int HitPoints { get; set; } = 20;
+        public int ArmorClass { get; set; } = 15;
+    }
+
+    public class NpcMonster
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public bool IsNpc { get; set; } = false;
+        public int HitPoints { get; set; } = 20;
+        public int ArmorClass { get; set; } = 15;
+        public int Initiative { get; set; } = 0;
     }
 }

@@ -90,4 +90,58 @@ public class PathfinderApiService
             return Result.Failure<IEnumerable<PfFeat>>(new Domain.Errors.DomainError("API.EXCEPTION", ex.Message));
         }
     }
+
+    public async Task<Result<IEnumerable<PfAncestry>>> GetAncestriesAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("api/pathfinder/ancestries");
+            if (response.IsSuccessStatusCode)
+            {
+                var ancestries = await response.Content.ReadFromJsonAsync<IEnumerable<PfAncestry>>(_jsonOptions);
+                return ancestries != null ? Result<IEnumerable<PfAncestry>>.Success(ancestries) : Result.Failure<IEnumerable<PfAncestry>>(new Domain.Errors.DomainError("ANCESTRIES.NOT_FOUND", "Ancestries not found"));
+            }
+            return Result.Failure<IEnumerable<PfAncestry>>(new Domain.Errors.DomainError("API.ERROR", $"API returned {response.StatusCode}"));
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure<IEnumerable<PfAncestry>>(new Domain.Errors.DomainError("API.EXCEPTION", ex.Message));
+        }
+    }
+
+    public async Task<Result<IEnumerable<PfBackground>>> GetBackgroundsAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("api/pathfinder/backgrounds");
+            if (response.IsSuccessStatusCode)
+            {
+                var backgrounds = await response.Content.ReadFromJsonAsync<IEnumerable<PfBackground>>(_jsonOptions);
+                return backgrounds != null ? Result<IEnumerable<PfBackground>>.Success(backgrounds) : Result.Failure<IEnumerable<PfBackground>>(new Domain.Errors.DomainError("BACKGROUNDS.NOT_FOUND", "Backgrounds not found"));
+            }
+            return Result.Failure<IEnumerable<PfBackground>>(new Domain.Errors.DomainError("API.ERROR", $"API returned {response.StatusCode}"));
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure<IEnumerable<PfBackground>>(new Domain.Errors.DomainError("API.EXCEPTION", ex.Message));
+        }
+    }
+
+    public async Task<Result<IEnumerable<PfClass>>> GetClassesAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("api/pathfinder/classes");
+            if (response.IsSuccessStatusCode)
+            {
+                var classes = await response.Content.ReadFromJsonAsync<IEnumerable<PfClass>>(_jsonOptions);
+                return classes != null ? Result<IEnumerable<PfClass>>.Success(classes) : Result.Failure<IEnumerable<PfClass>>(new Domain.Errors.DomainError("CLASSES.NOT_FOUND", "Classes not found"));
+            }
+            return Result.Failure<IEnumerable<PfClass>>(new Domain.Errors.DomainError("API.ERROR", $"API returned {response.StatusCode}"));
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure<IEnumerable<PfClass>>(new Domain.Errors.DomainError("API.EXCEPTION", ex.Message));
+        }
+    }
 }

@@ -115,36 +115,45 @@
                         </div>
                         
                         <div class="ability-grid">
-                            <div class="ability-score">
-                                <label>Strength</label>
-                                <input type="number" @bind="Character.AbilityScores.Strength" min="1" max="20" class="form-control" />
-                                <small>Modifier: @Character.AbilityScores.GetModifier(Character.AbilityScores.Strength)</small>
-                            </div>
-                            <div class="ability-score">
-                                <label>Dexterity</label>
-                                <input type="number" @bind="Character.AbilityScores.Dexterity" min="1" max="20" class="form-control" />
-                                <small>Modifier: @Character.AbilityScores.GetModifier(Character.AbilityScores.Dexterity)</small>
-                            </div>
-                            <div class="ability-score">
-                                <label>Constitution</label>
-                                <input type="number" @bind="Character.AbilityScores.Constitution" min="1" max="20" class="form-control" />
-                                <small>Modifier: @Character.AbilityScores.GetModifier(Character.AbilityScores.Constitution)</small>
-                            </div>
-                            <div class="ability-score">
-                                <label>Intelligence</label>
-                                <input type="number" @bind="Character.AbilityScores.Intelligence" min="1" max="20" class="form-control" />
-                                <small>Modifier: @Character.AbilityScores.GetModifier(Character.AbilityScores.Intelligence)</small>
-                            </div>
-                            <div class="ability-score">
-                                <label>Wisdom</label>
-                                <input type="number" @bind="Character.AbilityScores.Wisdom" min="1" max="20" class="form-control" />
-                                <small>Modifier: @Character.AbilityScores.GetModifier(Character.AbilityScores.Wisdom)</small>
-                            </div>
-                            <div class="ability-score">
-                                <label>Charisma</label>
-                                <input type="number" @bind="Character.AbilityScores.Charisma" min="1" max="20" class="form-control" />
-                                <small>Modifier: @Character.AbilityScores.GetModifier(Character.AbilityScores.Charisma)</small>
-                            </div>
+                            @if (Character.AbilityScores != null)
+                            {
+                                <div class="ability-score">
+                                    <label>Strength</label>
+                                    <input type="number" @bind="Character.AbilityScores.Strength" min="1" max="20" class="form-control" />
+                                    <small>Modifier: @GetModifierText(Character.AbilityScores.Strength)</small>
+                                </div>
+                                <div class="ability-score">
+                                    <label>Dexterity</label>
+                                    <input type="number" @bind="Character.AbilityScores.Dexterity" min="1" max="20" class="form-control" />
+                                    <small>Modifier: @GetModifierText(Character.AbilityScores.Dexterity)</small>
+                                </div>
+                                <div class="ability-score">
+                                    <label>Constitution</label>
+                                    <input type="number" @bind="Character.AbilityScores.Constitution" min="1" max="20" class="form-control" />
+                                    <small>Modifier: @GetModifierText(Character.AbilityScores.Constitution)</small>
+                                </div>
+                                <div class="ability-score">
+                                    <label>Intelligence</label>
+                                    <input type="number" @bind="Character.AbilityScores.Intelligence" min="1" max="20" class="form-control" />
+                                    <small>Modifier: @GetModifierText(Character.AbilityScores.Intelligence)</small>
+                                </div>
+                                <div class="ability-score">
+                                    <label>Wisdom</label>
+                                    <input type="number" @bind="Character.AbilityScores.Wisdom" min="1" max="20" class="form-control" />
+                                    <small>Modifier: @GetModifierText(Character.AbilityScores.Wisdom)</small>
+                                </div>
+                                <div class="ability-score">
+                                    <label>Charisma</label>
+                                    <input type="number" @bind="Character.AbilityScores.Charisma" min="1" max="20" class="form-control" />
+                                    <small>Modifier: @GetModifierText(Character.AbilityScores.Charisma)</small>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="loading-message">
+                                    <p>Loading ability scores...</p>
+                                </div>
+                            }
                         </div>
                     </div>
                 }
