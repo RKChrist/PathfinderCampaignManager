@@ -189,6 +189,9 @@ public class RulesRepository : IRulesRepository
         LoadSpellcastingRules();
         LoadExplorationRules();
         LoadItemRules();
+        LoadSubsystemRules();
+        LoadAdvancedRules();
+        LoadGMRules();
         
         await Task.CompletedTask;
     }
@@ -621,6 +624,239 @@ The same creature can only benefit from Treat Wounds once per hour.",
             Array.Empty<string>(),
             new[] { "destruction", "hardness", "durability", "broken" },
             new[] { "CRB-272" }
+        );
+    }
+
+    private void LoadSubsystemRules()
+    {
+        // Victory Points
+        _rules["victory-points"] = RuleRecord.Create(
+            "victory-points",
+            "Victory Points",
+            RuleCategory.Subsystems,
+            RuleContentType.Article,
+            "A subsystem for tracking progress toward long-term goals in structured challenges.",
+            @"**Victory Points**: Track progress toward completing a complex task.
+**Advantage Points**: Earned through smart tactics or good fortune.
+**Threshold**: Total VP needed to succeed at the challenge.
+**Time Pressure**: Challenges often have time limits or escalating consequences.",
+            Array.Empty<string>(),
+            new[] { "subsystem", "progress", "challenges", "advantage" },
+            new[] { "GMG-148" }
+        );
+
+        // Influence
+        _rules["influence"] = RuleRecord.Create(
+            "influence",
+            "Influence",
+            RuleCategory.Subsystems,
+            RuleContentType.Article,
+            "A subsystem for social encounters involving persuading important NPCs.",
+            @"**Discovery**: Learn NPC interests, preferences, and goals.
+**Influence Points**: Gained through successful social interactions.
+**Resistance**: NPCs have defense against social manipulation.
+**Consequences**: Both success and failure have ongoing story effects.",
+            Array.Empty<string>(),
+            new[] { "social", "npc", "persuasion", "intrigue" },
+            new[] { "GMG-151" }
+        );
+
+        // Research
+        _rules["research"] = RuleRecord.Create(
+            "research",
+            "Research",
+            RuleCategory.Subsystems,
+            RuleContentType.Article,
+            "A subsystem for investigating mysteries and uncovering hidden knowledge.",
+            @"**Research Points**: Measure progress toward solving a mystery.
+**Libraries**: Different sources provide varying research bonuses.
+**Time Investment**: Research takes time and sustained effort.
+**Breakthroughs**: Major discoveries that advance multiple research tracks.",
+            Array.Empty<string>(),
+            new[] { "investigation", "knowledge", "mystery", "library" },
+            new[] { "GMG-154" }
+        );
+
+        // Chases
+        _rules["chases"] = RuleRecord.Create(
+            "chases",
+            "Chases",
+            RuleCategory.Subsystems,
+            RuleContentType.Article,
+            "A subsystem for dynamic pursuit scenes with multiple participants.",
+            @"**Chase Points**: Measure distance between participants.
+**Obstacles**: Environmental challenges that slow or hinder movement.
+**Terrain**: Different environments provide unique chase mechanics.
+**Catch Up/Escape**: Specific thresholds for resolving the chase.",
+            Array.Empty<string>(),
+            new[] { "movement", "pursuit", "obstacles", "terrain" },
+            new[] { "GMG-156" }
+        );
+
+        // Infiltration
+        _rules["infiltration"] = RuleRecord.Create(
+            "infiltration",
+            "Infiltration",
+            RuleCategory.Subsystems,
+            RuleContentType.Article,
+            "A subsystem for stealth missions and covert operations.",
+            @"**Awareness Points**: Track how close guards are to discovering intruders.
+**Security Features**: Alarms, guards, locks, and magical protections.
+**Stealth vs Detection**: Contested rolls determine success or discovery.
+**Consequences**: Getting caught leads to escalation, not immediate failure.",
+            Array.Empty<string>(),
+            new[] { "stealth", "guards", "security", "detection" },
+            new[] { "GMG-159" }
+        );
+
+        // Reputation
+        _rules["reputation"] = RuleRecord.Create(
+            "reputation",
+            "Reputation",
+            RuleCategory.Subsystems,
+            RuleContentType.Article,
+            "A subsystem for tracking how NPCs and organizations view the characters.",
+            @"**Reputation Scales**: Different groups have separate reputation tracks.
+**Fame vs Infamy**: Positive and negative recognition have different effects.
+**Reputation Events**: Major actions that significantly impact standing.
+**Benefits and Drawbacks**: Reputation affects prices, services, and opportunities.",
+            Array.Empty<string>(),
+            new[] { "social", "fame", "organizations", "consequences" },
+            new[] { "GMG-164" }
+        );
+    }
+
+    private void LoadAdvancedRules()
+    {
+        // Duels
+        _rules["duels"] = RuleRecord.Create(
+            "duels",
+            "Duels",
+            RuleCategory.Combat,
+            RuleContentType.Article,
+            "Formal combat between two participants with special rules and conditions.",
+            @"**Duel Types**: Different styles with unique rules (first blood, to knockout, to death).
+**Honor Code**: Breaking duel etiquette has social consequences.
+**Witnesses**: Audience affects stakes and outcomes.
+**Victory Conditions**: Clear parameters for determining the winner.",
+            Array.Empty<string>(),
+            new[] { "formal-combat", "honor", "witnesses", "victory" },
+            new[] { "GMG-166" }
+        );
+
+        // Leadership
+        _rules["leadership"] = RuleRecord.Create(
+            "leadership",
+            "Leadership",
+            RuleCategory.GMTools,
+            RuleContentType.Article,
+            "Rules for characters who lead organizations, settlements, or groups.",
+            @"**Leadership Activities**: Special downtime activities for leaders.
+**Followers**: NPCs who serve under the character's command.
+**Organization Management**: Running guilds, kingdoms, or other groups.
+**Mass Combat**: Rules for battles between large forces.",
+            Array.Empty<string>(),
+            new[] { "organizations", "followers", "management", "mass-combat" },
+            new[] { "GMG-168" }
+        );
+
+        // Hexploration
+        _rules["hexploration"] = RuleRecord.Create(
+            "hexploration",
+            "Hexploration",
+            RuleCategory.Subsystems,
+            RuleContentType.Article,
+            "A subsystem for exploring large wilderness areas using hex-based maps.",
+            @"**Hex Movement**: Travel between adjacent hexes takes set amounts of time.
+**Exploration Activities**: Special actions for discovering landmarks and resources.
+**Random Encounters**: Tables for generating wilderness encounters.
+**Weather and Hazards**: Environmental challenges that affect travel.",
+            Array.Empty<string>(),
+            new[] { "wilderness", "exploration", "travel", "encounters" },
+            new[] { "GMG-170" }
+        );
+
+        // Vehicles
+        _rules["vehicles"] = RuleRecord.Create(
+            "vehicles",
+            "Vehicles",
+            RuleCategory.Items,
+            RuleContentType.Article,
+            "Rules for operating and fighting with ships, wagons, and other large conveyances.",
+            @"**Vehicle Statistics**: AC, Hardness, HP, Speed, and Piloting DC.
+**Vehicle Actions**: Special activities for operating vehicles in encounters.
+**Crew Positions**: Different roles for multiple characters on large vehicles.
+**Vehicle Combat**: Rules for battles between or aboard vehicles.",
+            Array.Empty<string>(),
+            new[] { "ships", "transportation", "piloting", "crew" },
+            new[] { "GMG-174" }
+        );
+    }
+
+    private void LoadGMRules()
+    {
+        // Building Encounters
+        _rules["building-encounters"] = RuleRecord.Create(
+            "building-encounters",
+            "Building Encounters",
+            RuleCategory.GMTools,
+            RuleContentType.Article,
+            "Guidelines for creating balanced and engaging combat encounters.",
+            @"**Encounter Budget**: Point system for balancing creature difficulty.
+**Threat Assessment**: Adjusting encounters for party size and level.
+**Terrain Features**: Using environment to enhance tactical complexity.
+**Dynamic Elements**: Hazards, timers, and changing conditions.",
+            Array.Empty<string>(),
+            new[] { "balance", "budget", "difficulty", "terrain" },
+            new[] { "GMG-46" }
+        );
+
+        // NPC Creation
+        _rules["npc-creation"] = RuleRecord.Create(
+            "npc-creation",
+            "NPC Creation",
+            RuleCategory.GMTools,
+            RuleContentType.Article,
+            "Guidelines for creating memorable and mechanically appropriate NPCs.",
+            @"**NPC Roles**: Different types serve different narrative functions.
+**Quick NPCs**: Simplified stat blocks for minor characters.
+**Detailed NPCs**: Full character builds for major antagonists and allies.
+**Motivations**: Giving NPCs clear goals and personality traits.",
+            Array.Empty<string>(),
+            new[] { "npcs", "characters", "antagonists", "allies" },
+            new[] { "GMG-72" }
+        );
+
+        // Campaign Structure
+        _rules["campaign-structure"] = RuleRecord.Create(
+            "campaign-structure",
+            "Campaign Structure",
+            RuleCategory.GMTools,
+            RuleContentType.Article,
+            "Advice for planning and organizing long-term campaigns.",
+            @"**Campaign Themes**: Choosing the tone and focus of the campaign.
+**Story Arcs**: Breaking large campaigns into manageable chapters.
+**Character Development**: Supporting player character growth and goals.
+**World Building**: Creating consistent and believable settings.",
+            Array.Empty<string>(),
+            new[] { "planning", "themes", "arcs", "worldbuilding" },
+            new[] { "GMG-36" }
+        );
+
+        // Hazards and Traps
+        _rules["hazards-traps"] = RuleRecord.Create(
+            "hazards-traps",
+            "Hazards and Traps",
+            RuleCategory.GMTools,
+            RuleContentType.Article,
+            "Environmental dangers and mechanical traps that challenge parties.",
+            @"**Detection**: Finding hazards before they trigger.
+**Disabling**: Safely neutralizing dangerous devices.
+**Triggers**: Conditions that activate traps and hazards.
+**Damage Types**: Physical, magical, and environmental effects.",
+            Array.Empty<string>(),
+            new[] { "traps", "environmental", "detection", "disable" },
+            new[] { "GMG-76" }
         );
     }
 

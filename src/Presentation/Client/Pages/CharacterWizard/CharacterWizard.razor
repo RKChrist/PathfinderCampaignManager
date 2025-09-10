@@ -2,6 +2,7 @@
 @page "/campaigns/{campaignId:guid}/characters/create"
 @using PathfinderCampaignManager.Domain.Enums
 @using PathfinderCampaignManager.Domain.Interfaces
+@using PathfinderCampaignManager.Domain.Entities.Pathfinder
 @using PathfinderCampaignManager.Presentation.Client.Components.Auth
 @using PathfinderCampaignManager.Presentation.Client.Services
 @inject IJSRuntime JSRuntime
@@ -86,7 +87,11 @@
                         }
                     </div>
                     <div class="character-info">
-                        <h3>@(string.IsNullOrEmpty(characterDraft.Name) ? "New Character" : characterDraft.Name)</h3>
+                        <div class="character-name-input">
+                            <input type="text" @bind="characterDraft.Name" @bind:event="oninput" @onblur="OnStepChanged"
+                                   placeholder="Enter character name" 
+                                   class="name-input" />
+                        </div>
                         <p class="character-subtitle">
                             Level @characterDraft.Level
                             @if (!string.IsNullOrEmpty(characterDraft.Ancestry))
@@ -450,6 +455,33 @@
     color: var(--text-primary);
 }
 
+.character-name-input {
+    margin-bottom: 0.5rem;
+}
+
+.name-input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.375rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    background: white;
+    transition: border-color 0.2s;
+}
+
+.name-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.2);
+}
+
+.name-input::placeholder {
+    color: var(--text-secondary);
+    font-weight: 400;
+}
+
 .character-subtitle {
     margin: 0;
     font-size: 0.875rem;
@@ -747,6 +779,9 @@
         // Load options for first step
         await LoadStepOptions();
         
+        // Initial calculation
+        await RecalculateCharacter();
+        
         // Setup keyboard shortcuts
         await JSRuntime.InvokeVoidAsync("setupWizardHotkeys");
     }
@@ -784,32 +819,45 @@
         await RecalculateCharacter();
         await UpdateQuickPicks();
         ValidateCurrentStep();
+        StateHasChanged();
     }
 
     private async Task RecalculateCharacter()
     {
-        if (string.IsNullOrEmpty(characterDraft.Name)) return;
-        
         try
         {
             // In real implementation, call character calculator
             // calculatedCharacter = await Http.PostAsJsonAsync("api/characters/calculate", characterDraft);
             
-            // For now, create mock calculated character
+            // Create calculated character with dynamic values based on selections
+            var baseScores = new Dictionary<string, int>
+            {
+                ["Strength"] = 10,
+                ["Dexterity"] = 10,
+                ["Constitution"] = 10,
+                ["Intelligence"] = 10,
+                ["Wisdom"] = 10,
+                ["Charisma"] = 10
+            };
+
+            // Apply ancestry bonuses
+            ApplyAncestryBonuses(baseScores);
+            
+            // Apply background bonuses  
+            ApplyBackgroundBonuses(baseScores);
+            
+            // Apply class bonuses
+            ApplyClassBonuses(baseScores);
+            
+            // Apply free boosts
+            ApplyFreeBoosts(baseScores);
+
             calculatedCharacter = new CalculatedCharacter
             {
                 Id = Guid.NewGuid(),
-                Name = characterDraft.Name,
+                Name = !string.IsNullOrEmpty(characterDraft.Name) ? characterDraft.Name : "New Character",
                 Level = characterDraft.Level,
-                AbilityScores = new Dictionary<string, int>
-                {
-                    ["Strength"] = 14,
-                    ["Dexterity"] = 12,
-                    ["Constitution"] = 13,
-                    ["Intelligence"] = 10,
-                    ["Wisdom"] = 15,
-                    ["Charisma"] = 8
-                },
+                AbilityScores = baseScores,
                 ValidationIssues = new List<ValidationIssue>()
             };
             
@@ -820,14 +868,140 @@
             );
             
             calculatedCharacter.ArmorClass = 10 + calculatedCharacter.AbilityModifiers["Dexterity"];
-            calculatedCharacter.HitPoints = 8 + calculatedCharacter.AbilityModifiers["Constitution"];
+            calculatedCharacter.HitPoints = GetBaseHitPoints() + calculatedCharacter.AbilityModifiers["Constitution"];
             calculatedCharacter.Initiative = calculatedCharacter.AbilityModifiers["Dexterity"];
+            
+            StateHasChanged();
         }
         catch (Exception ex)
         {
             // Handle calculation errors
             Console.WriteLine($"Character calculation failed: {ex.Message}");
         }
+    }
+
+    private void ApplyAncestryBonuses(Dictionary<string, int> scores)
+    {
+        switch (characterDraft.Ancestry)
+        {
+            case "Human":
+                // Humans get 2 free ability boosts
+                scores["Strength"] += 2;
+                scores["Dexterity"] += 2;
+                break;
+            case "Elf":
+                scores["Dexterity"] += 2;
+                scores["Intelligence"] += 2;
+                scores["Constitution"] -= 2;
+                break;
+            case "Dwarf":
+                scores["Constitution"] += 2;
+                scores["Wisdom"] += 2;
+                scores["Charisma"] -= 2;
+                break;
+            case "Halfling":
+                scores["Dexterity"] += 2;
+                scores["Wisdom"] += 2;
+                scores["Strength"] -= 2;
+                break;
+        }
+    }
+
+    private void ApplyBackgroundBonuses(Dictionary<string, int> scores)
+    {
+        switch (characterDraft.Background)
+        {
+            case "Acolyte":
+                scores["Intelligence"] += 2;
+                scores["Wisdom"] += 2;
+                break;
+            case "Criminal":
+                scores["Dexterity"] += 2;
+                scores["Intelligence"] += 2;
+                break;
+            case "Folk Hero":
+                scores["Strength"] += 2;
+                scores["Wisdom"] += 2;
+                break;
+            case "Noble":
+                scores["Intelligence"] += 2;
+                scores["Charisma"] += 2;
+                break;
+            case "Scholar":
+                scores["Intelligence"] += 2;
+                scores["Wisdom"] += 2;
+                break;
+        }
+    }
+
+    private void ApplyClassBonuses(Dictionary<string, int> scores)
+    {
+        if (string.IsNullOrEmpty(characterDraft.Class))
+            return;
+
+        switch (characterDraft.Class)
+        {
+            case "Fighter":
+                scores["Strength"] += 2;
+                break;
+            case "Wizard":
+                scores["Intelligence"] += 2;
+                break;
+            case "Rogue":
+                scores["Dexterity"] += 2;
+                break;
+            case "Cleric":
+                scores["Wisdom"] += 2;
+                break;
+            case "Ranger":
+                scores["Dexterity"] += 2;
+                break;
+            case "Barbarian":
+                scores["Strength"] += 2;
+                break;
+            case "Bard":
+                scores["Charisma"] += 2;
+                break;
+            case "Champion":
+                scores["Strength"] += 2;
+                break;
+            case "Druid":
+                scores["Wisdom"] += 2;
+                break;
+            case "Monk":
+                scores["Dexterity"] += 2;
+                break;
+            case "Sorcerer":
+                scores["Charisma"] += 2;
+                break;
+            case "Alchemist":
+                scores["Intelligence"] += 2;
+                break;
+        }
+    }
+
+    private void ApplyFreeBoosts(Dictionary<string, int> scores)
+    {
+        // Apply free boosts from characterDraft.AbilityBoosts
+        foreach (var boost in characterDraft.AbilityBoosts)
+        {
+            if (scores.ContainsKey(boost.Key))
+            {
+                scores[boost.Key] += boost.Value * 2; // Each boost is +2
+            }
+        }
+    }
+
+    private int GetBaseHitPoints()
+    {
+        return characterDraft.Class switch
+        {
+            "Fighter" => 10,
+            "Wizard" => 6,
+            "Rogue" => 8,
+            "Cleric" => 8,
+            _ => 8
+        };
     }
 
     private async Task UpdateQuickPicks()
@@ -913,13 +1087,40 @@
                 Name = characterDraft.Name,
                 Level = characterDraft.Level,
                 Ancestry = characterDraft.Ancestry,
-                Heritage = string.Empty, // Not available in current draft
+                Heritage = GetDefaultHeritage(characterDraft.Ancestry),
                 Background = characterDraft.Background,
                 Class = characterDraft.Class,
-                AbilityScores = characterDraft.AbilityBoosts, // Using AbilityBoosts instead
-                Skills = new Dictionary<string, string>(), // Not available in current draft
-                Feats = characterDraft.SelectedFeats,
-                Equipment = new List<string>(), // Not available in current draft
+                AbilityScores = calculatedCharacter?.AbilityScores ?? new Dictionary<string, int>
+                {
+                    ["Strength"] = 10,
+                    ["Dexterity"] = 10,
+                    ["Constitution"] = 10,
+                    ["Intelligence"] = 10,
+                    ["Wisdom"] = 10,
+                    ["Charisma"] = 10
+                },
+                Skills = new Dictionary<string, string>
+                {
+                    ["Acrobatics"] = "Untrained",
+                    ["Arcana"] = "Untrained",
+                    ["Athletics"] = "Trained",
+                    ["Crafting"] = "Untrained",
+                    ["Deception"] = "Untrained",
+                    ["Diplomacy"] = "Untrained",
+                    ["Intimidation"] = "Untrained",
+                    ["Lore"] = "Trained",
+                    ["Medicine"] = "Untrained",
+                    ["Nature"] = "Untrained",
+                    ["Occultism"] = "Untrained",
+                    ["Performance"] = "Untrained",
+                    ["Religion"] = "Untrained",
+                    ["Society"] = "Untrained",
+                    ["Stealth"] = "Untrained",
+                    ["Survival"] = "Untrained",
+                    ["Thievery"] = "Untrained"
+                },
+                Feats = characterDraft.SelectedFeats.Any() ? characterDraft.SelectedFeats : new List<string> { "Sudden Charge" },
+                Equipment = new List<string> { "Longsword", "Scale Mail", "Shield", "Adventurer's Pack" },
                 CampaignId = CampaignId // Associate with campaign if provided
             };
             
@@ -998,6 +1199,20 @@
         return modifier >= 0 ? $"+{modifier}" : modifier.ToString();
     }
 
+    private string GetDefaultHeritage(string ancestry)
+    {
+        return ancestry switch
+        {
+            "Human" => "Versatile Heritage",
+            "Elf" => "High Elf",
+            "Dwarf" => "Mountain Dwarf",
+            "Halfling" => "Lightfoot Halfling",
+            "Gnome" => "Forest Gnome",
+            "Goblin" => "Charhide Goblin",
+            _ => "Standard Heritage"
+        };
+    }
+
     private List<QuickPick> GetAncestryQuickPicks()
     {
         return new List<QuickPick>
@@ -1027,37 +1242,150 @@
                 ancestries => ancestries.Cast<object>().ToList(),
                 error =>
                 {
-                    Console.WriteLine($"Failed to load ancestries: {error.Message}");
-                    return new List<object>();
+                    Console.WriteLine($"Failed to load ancestries: {error.Message}, using mock data");
+                    return GetMockAncestries();
                 }
             );
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Exception loading ancestries: {ex.Message}");
-            return new List<object>();
+            Console.WriteLine($"Exception loading ancestries: {ex.Message}, using mock data");
+            return GetMockAncestries();
         }
+    }
+
+    private List<object> GetMockAncestries()
+    {
+        return new List<object>
+        {
+            new PfAncestry
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = "Human",
+                Description = "Ambitious, adaptable, and diverse. Humans are the most common ancestry.",
+                HitPoints = 8,
+                Size = "Medium",
+                Speeds = new Dictionary<string, int> { ["land"] = 25 },
+                AbilityBoosts = new List<string>(), // No fixed boosts
+                AbilityFlaws = new List<string>(), // No flaws
+                FreeAbilityBoosts = new List<string> { "Any", "Any" } // 2 free boosts to any abilities
+            },
+            new PfAncestry
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = "Elf",
+                Description = "Tall, graceful, and magical. Elves are known for their longevity and connection to magic.",
+                HitPoints = 6,
+                Size = "Medium",
+                Speeds = new Dictionary<string, int> { ["land"] = 30 },
+                AbilityBoosts = new List<string> { "Dexterity", "Intelligence" },
+                AbilityFlaws = new List<string> { "Constitution" },
+                FreeAbilityBoosts = new List<string> { "Any" } // 1 free boost to any ability
+            },
+            new PfAncestry
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = "Dwarf",
+                Description = "Short, sturdy, and traditional. Dwarves are known for their craftsmanship and resilience.",
+                HitPoints = 10,
+                Size = "Medium",
+                Speeds = new Dictionary<string, int> { ["land"] = 20 },
+                AbilityBoosts = new List<string> { "Constitution", "Wisdom" },
+                AbilityFlaws = new List<string> { "Charisma" },
+                FreeAbilityBoosts = new List<string> { "Any" } // 1 free boost to any ability
+            },
+            new PfAncestry
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = "Halfling",
+                Description = "Small, cheerful, and lucky. Halflings are known for their optimism and courage.",
+                HitPoints = 6,
+                Size = "Small",
+                Speeds = new Dictionary<string, int> { ["land"] = 25 },
+                AbilityBoosts = new List<string> { "Dexterity", "Wisdom" },
+                AbilityFlaws = new List<string> { "Strength" },
+                FreeAbilityBoosts = new List<string> { "Any" } // 1 free boost to any ability
+            }
+        }.Cast<object>().ToList();
     }
 
     private async Task<List<object>> LoadBackgroundOptions()
     {
         try
         {
+            // Try to load from API first, but provide fallback mock data
             var result = await PathfinderApi.GetBackgroundsAsync();
             return result.Match(
                 backgrounds => backgrounds.Cast<object>().ToList(),
                 error =>
                 {
-                    Console.WriteLine($"Failed to load backgrounds: {error.Message}");
-                    return new List<object>();
+                    Console.WriteLine($"Failed to load backgrounds: {error.Message}, using mock data");
+                    return GetMockBackgrounds();
                 }
             );
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Exception loading backgrounds: {ex.Message}");
-            return new List<object>();
+            Console.WriteLine($"Exception loading backgrounds: {ex.Message}, using mock data");
+            return GetMockBackgrounds();
         }
+    }
+
+    private List<object> GetMockBackgrounds()
+    {
+        return new List<object>
+        {
+            new PfBackground
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = "Acolyte",
+                Description = "You served in a temple, learning about divine magic and gaining social connections.",
+                AbilityBoosts = new List<string> { "Intelligence", "Wisdom" },
+                FreeAbilityBoosts = 0,
+                SkillTraining = new List<string> { "Religion", "Scribing Lore" },
+                Traits = new List<string> { "Divine", "Knowledge" }
+            },
+            new PfBackground
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = "Criminal",
+                Description = "You lived outside the law, developing stealth and street smarts.",
+                AbilityBoosts = new List<string> { "Dexterity" },
+                FreeAbilityBoosts = 1,
+                SkillTraining = new List<string> { "Stealth", "Underworld Lore" },
+                Traits = new List<string> { "Street-wise", "Sneaky" }
+            },
+            new PfBackground
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = "Folk Hero",
+                Description = "You stood up for others, earning respect and leadership skills.",
+                AbilityBoosts = new List<string> { "Constitution" },
+                FreeAbilityBoosts = 1,
+                SkillTraining = new List<string> { "Animal Handling", "Farming Lore" },
+                Traits = new List<string> { "Leadership", "Heroic" }
+            },
+            new PfBackground
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = "Noble",
+                Description = "You were raised in privilege, learning etiquette and gaining connections.",
+                AbilityBoosts = new List<string> { "Intelligence", "Charisma" },
+                FreeAbilityBoosts = 0,
+                SkillTraining = new List<string> { "Society", "Genealogy Lore" },
+                Traits = new List<string> { "Wealthy", "Connected" }
+            },
+            new PfBackground
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = "Scholar",
+                Description = "You devoted yourself to learning, mastering knowledge and research.",
+                AbilityBoosts = new List<string> { "Intelligence" },
+                FreeAbilityBoosts = 1,
+                SkillTraining = new List<string> { "Arcana", "Academia Lore" },
+                Traits = new List<string> { "Scholarly", "Learned" }
+            }
+        }.Cast<object>().ToList();
     }
 
     private async Task<List<object>> LoadClassOptions()
@@ -1069,16 +1397,51 @@
                 classes => classes.Cast<object>().ToList(),
                 error =>
                 {
-                    Console.WriteLine($"Failed to load classes: {error.Message}");
-                    return new List<object>();
+                    Console.WriteLine($"Failed to load classes: {error.Message}, using mock data");
+                    return GetMockClasses();
                 }
             );
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Exception loading classes: {ex.Message}");
-            return new List<object>();
+            Console.WriteLine($"Exception loading classes: {ex.Message}, using mock data");
+            return GetMockClasses();
         }
+    }
+
+    private List<object> GetMockClasses()
+    {
+        return new List<object>
+        {
+            new PfClass
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = "Fighter",
+                Description = "Versatile warriors who excel at combat with weapons and armor.",
+                KeyAbilities = new List<string> { "Strength" }
+            },
+            new PfClass
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = "Wizard",
+                Description = "Masters of arcane magic who cast spells through study and preparation.",
+                KeyAbilities = new List<string> { "Intelligence" }
+            },
+            new PfClass
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = "Rogue",
+                Description = "Skilled infiltrators who specialize in stealth, skills, and sneak attacks.",
+                KeyAbilities = new List<string> { "Dexterity" }
+            },
+            new PfClass
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = "Cleric",
+                Description = "Divine spellcasters who serve deities and heal allies.",
+                KeyAbilities = new List<string> { "Wisdom" }
+            }
+        }.Cast<object>().ToList();
     }
 
     private List<CharacterPreset> GetCharacterPresets()

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using PathfinderCampaignManager.Presentation.Shared.Models;
+using PathfinderCampaignManager.Presentation.Server.Controllers;
 using System.Collections.Concurrent;
 
 namespace PathfinderCampaignManager.Presentation.Server.Hubs;
@@ -40,13 +41,57 @@ public class CombatHub : Hub
             Console.WriteLine($"Added to group: Combat-{combatId}");
             
             // Send current combat state to the joining user
-            if (CombatSessions.TryGetValue(combatId, out var session))
+            // Check CombatController's shared storage first - prioritize campaignId if provided
+            Guid lookupKey;
+            if (!string.IsNullOrEmpty(campaignId) && Guid.TryParse(campaignId, out var campaignGuid))
+            {
+                lookupKey = campaignGuid;
+                Console.WriteLine($"Using campaignId for lookup: {lookupKey}");
+            }
+            else if (Guid.TryParse(combatId, out var combatGuid))
+            {
+                lookupKey = combatGuid;
+                Console.WriteLine($"Using combatId for lookup: {lookupKey}");
+            }
+            else
+            {
+                Console.WriteLine($"Invalid combat/campaign ID provided");
+                return;
+            }
+            
+            if (CombatController._combatSessions.TryGetValue(lookupKey, out var controllerSession))
+            {
+                Console.WriteLine($"Found combat session in CombatController storage: {controllerSession.Name}");
+                try
+                {
+                    // Convert CombatController's CombatSession to Shared.Models.CombatSession
+                    var sharedSession = new PathfinderCampaignManager.Presentation.Shared.Models.CombatSession
+                    {
+                        Id = controllerSession.Id,
+                        Name = controllerSession.Name,
+                        IsActive = controllerSession.IsActive,
+                        Round = controllerSession.Round,
+                        CurrentTurn = controllerSession.CurrentTurn,
+                        Participants = controllerSession.Participants.Select(MapToSharedParticipant).ToList()
+                    };
+                    
+                    await Clients.Caller.SendAsync("CombatStateUpdated", sharedSession);
+                    Console.WriteLine("CombatStateUpdated sent successfully from CombatController storage");
+                }
+                catch (Exception sessionEx)
+                {
+                    Console.WriteLine($"Failed to send CombatStateUpdated: {sessionEx}");
+                    throw;
+                }
+            }
+            // Fallback to local CombatHub storage
+            else if (CombatSessions.TryGetValue(combatId, out var session))
             {
                 Console.WriteLine($"Sending existing combat state for session: {session.Name}");
                 try
                 {
                     await Clients.Caller.SendAsync("CombatStateUpdated", session);
-                    Console.WriteLine("CombatStateUpdated sent successfully");
+                    Console.WriteLine("CombatStateUpdated sent successfully from CombatHub storage");
                 }
                 catch (Exception sessionEx)
                 {
@@ -101,6 +146,47 @@ public class CombatHub : Hub
                 participant.HitPoints = maxHp;
                 
                 await Clients.Group($"Combat-{combatId}").SendAsync("HitPointsUpdated", participantId, currentHp, maxHp);
+                await Clients.Group($"Combat-{combatId}").SendAsync("CombatStateUpdated", session);
+            }
+        }
+    }
+
+    public async Task UpdateArmorClass(string combatId, string participantId, int armorClass)
+    {
+        if (CombatSessions.TryGetValue(combatId, out var session))
+        {
+            var participant = session.Participants.FirstOrDefault(p => p.Id.ToString() == participantId);
+            if (participant != null)
+            {
+                participant.ArmorClass = armorClass;
+                
+                await Clients.Group($"Combat-{combatId}").SendAsync("ArmorClassUpdated", participantId, armorClass);
+                await Clients.Group($"Combat-{combatId}").SendAsync("CombatStateUpdated", session);
+            }
+        }
+    }
+
+    public async Task UpdateSave(string combatId, string participantId, string saveType, int value)
+    {
+        if (CombatSessions.TryGetValue(combatId, out var session))
+        {
+            var participant = session.Participants.FirstOrDefault(p => p.Id.ToString() == participantId);
+            if (participant != null)
+            {
+                switch (saveType.ToLower())
+                {
+                    case "fortitude":
+                        participant.Fortitude = value;
+                        break;
+                    case "reflex":
+                        participant.Reflex = value;
+                        break;
+                    case "will":
+                        participant.Will = value;
+                        break;
+                }
+                
+                await Clients.Group($"Combat-{combatId}").SendAsync("SaveUpdated", participantId, saveType, value);
                 await Clients.Group($"Combat-{combatId}").SendAsync("CombatStateUpdated", session);
             }
         }
@@ -341,6 +427,35 @@ public class CombatHub : Hub
             await Clients.Group($"Combat-{combatId}").SendAsync("CombatResumed", session);
             await Clients.Group($"Combat-{combatId}").SendAsync("CombatStateUpdated", session);
         }
+    }
+
+    private PathfinderCampaignManager.Presentation.Shared.Models.CombatParticipant MapToSharedParticipant(PathfinderCampaignManager.Domain.Entities.Combat.CombatParticipant participant)
+    {
+        return new PathfinderCampaignManager.Presentation.Shared.Models.CombatParticipant
+        {
+            Id = participant.Id,
+            Name = participant.Name,
+            Type = participant.Type.ToString(),
+            Initiative = participant.Initiative,
+            InitiativeModifier = participant.InitiativeModifier,
+            HitPoints = participant.HitPoints,
+            CurrentHitPoints = participant.CurrentHitPoints,
+            ArmorClass = participant.ArmorClass,
+            FortitudeSave = participant.FortitudeSave,
+            ReflexSave = participant.ReflexSave,
+            WillSave = participant.WillSave,
+            IsPlayerCharacter = participant.IsPlayerCharacter,
+            IsHidden = participant.IsHidden,
+            CharacterId = participant.CharacterId?.ToString(),
+            PlayerId = participant.PlayerId?.ToString(),
+            Notes = participant.Notes,
+            Conditions = participant.Conditions?.ToList() ?? new List<string>(),
+            Level = participant.Level,
+            Class = participant.Class,
+            Ancestry = participant.Ancestry,
+            CreatureType = participant.Class ?? "Unknown",
+            PassivePerception = 10 + participant.Level // Simple calculation
+        };
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)

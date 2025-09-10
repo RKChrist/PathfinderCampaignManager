@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using PathfinderCampaignManager.Domain.Enums;
 
 namespace PathfinderCampaignManager.Presentation.Server.Controllers;
 
@@ -10,19 +12,28 @@ namespace PathfinderCampaignManager.Presentation.Server.Controllers;
 public class NpcMonsterController : ControllerBase
 {
     // In-memory storage for demo purposes
-    private static readonly List<MonsterData> _monsters = new();
+    private static readonly List<MonsterData> _monsters = InitializeDefaultMonsters();
     private static readonly List<CombatEncounter> _encounters = new();
     private static readonly List<PremadeEncounter> _premadeEncounters = InitializePremadeEncounters();
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<MonsterResponse>>> GetMonsters([FromQuery] Guid? sessionId = null)
+    public async Task<ActionResult<IEnumerable<MonsterResponse>>> GetMonsters([FromQuery] Guid? sessionId = null, [FromQuery] Guid? campaignId = null)
     {
         var userId = GetCurrentUserId();
-        var userMonsters = _monsters.Where(m => m.OwnerUserId == userId);
+        
+        // Include both user-owned monsters and template monsters
+        var userMonsters = _monsters.Where(m => m.OwnerUserId == userId || m.IsTemplate);
 
         if (sessionId.HasValue)
         {
-            userMonsters = userMonsters.Where(m => m.SessionId == sessionId);
+            userMonsters = userMonsters.Where(m => m.SessionId == sessionId || m.SessionId == null);
+        }
+        else if (campaignId.HasValue)
+        {
+            // For campaign-based queries, include monsters from any session in that campaign
+            // Since we don't have campaign-session relationship in current model, 
+            // we'll use campaignId as sessionId for this demo
+            userMonsters = userMonsters.Where(m => m.SessionId == campaignId || m.SessionId == null);
         }
 
         var monsterResponses = userMonsters.Select(MapToResponse).ToList();
@@ -44,13 +55,28 @@ public class NpcMonsterController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Guid>> CreateMonster([FromBody] CreateMonsterRequest request)
     {
+        if (!ModelState.IsValid)
+        {
+            var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
+            Console.WriteLine($"Validation errors: {string.Join(", ", errors)}");
+            Console.WriteLine($"Request data: Name='{request?.Name}', Type='{request?.Type}', Level={request?.Level}, AC={request?.ArmorClass}, HP={request?.HitPoints}");
+            return BadRequest(ModelState);
+        }
+
         var userId = GetCurrentUserId();
+
+        // Parse the Type string to enum
+        if (!Enum.TryParse<NpcMonsterType>(request.Type, true, out var monsterType))
+        {
+            ModelState.AddModelError(nameof(request.Type), "Invalid monster type specified");
+            return BadRequest(ModelState);
+        }
 
         var monster = new MonsterData
         {
             Id = Guid.NewGuid(),
             Name = request.Name,
-            Type = request.Type,
+            Type = monsterType,
             Level = request.Level,
             Description = request.Description ?? string.Empty,
             ArmorClass = request.ArmorClass,
@@ -65,6 +91,7 @@ public class NpcMonsterController : ControllerBase
         };
 
         _monsters.Add(monster);
+        Console.WriteLine($"Successfully created monster: {monster.Name} (ID: {monster.Id})");
 
         return CreatedAtAction(nameof(GetMonster), new { id = monster.Id }, monster.Id);
     }
@@ -78,8 +105,15 @@ public class NpcMonsterController : ControllerBase
         if (monster == null)
             return NotFound();
 
+        // Parse the Type string to enum
+        if (!Enum.TryParse<NpcMonsterType>(request.Type, true, out var updateMonsterType))
+        {
+            ModelState.AddModelError(nameof(request.Type), "Invalid monster type specified");
+            return BadRequest(ModelState);
+        }
+
         monster.Name = request.Name;
-        monster.Type = request.Type;
+        monster.Type = updateMonsterType;
         monster.Level = request.Level;
         monster.Description = request.Description ?? string.Empty;
         monster.ArmorClass = request.ArmorClass;
@@ -207,11 +241,17 @@ public class NpcMonsterController : ControllerBase
         {
             for (int i = 0; i < monsterTemplate.Count; i++)
             {
+                // Parse the template type to enum
+                if (!Enum.TryParse<NpcMonsterType>(monsterTemplate.Type, true, out var templateType))
+                {
+                    templateType = NpcMonsterType.Humanoid; // Default fallback
+                }
+
                 var monster = new MonsterData
                 {
                     Id = Guid.NewGuid(),
                     Name = monsterTemplate.Count > 1 ? $"{monsterTemplate.Name} #{i + 1}" : monsterTemplate.Name,
-                    Type = monsterTemplate.Type,
+                    Type = templateType,
                     Level = monsterTemplate.Level,
                     Description = monsterTemplate.Description,
                     ArmorClass = monsterTemplate.ArmorClass,
@@ -263,12 +303,26 @@ public class NpcMonsterController : ControllerBase
             Description = monster.Description,
             ArmorClass = monster.ArmorClass,
             HitPoints = monster.HitPoints,
-            MaxHitPoints = monster.MaxHitPoints,
-            Speed = monster.Speed,
+            Speed = ParseSpeedToInteger(monster.Speed),
             IsTemplate = monster.IsTemplate,
+            OwnerUserId = monster.OwnerUserId,
+            SessionId = monster.SessionId,
             CreatedAt = monster.CreatedAt,
             UpdatedAt = monster.UpdatedAt
         };
+    }
+
+    private static int ParseSpeedToInteger(string speed)
+    {
+        if (string.IsNullOrWhiteSpace(speed))
+            return 25;
+
+        // Extract number from strings like "30 feet", "25", etc.
+        var match = System.Text.RegularExpressions.Regex.Match(speed, @"\d+");
+        if (match.Success && int.TryParse(match.Value, out var result))
+            return result;
+        
+        return 25; // Default fallback
     }
 
     private static MonsterEncounterResponse MapToMonsterEncounterResponse(CombatEncounter encounter)
@@ -295,6 +349,84 @@ public class NpcMonsterController : ControllerBase
             PartyLevel = encounter.PartyLevel,
             Difficulty = encounter.Difficulty,
             MonsterTemplates = encounter.MonsterTemplates
+        };
+    }
+
+    private static List<MonsterData> InitializeDefaultMonsters()
+    {
+        // Create a default user ID for demo purposes
+        var defaultUserId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+        
+        return new List<MonsterData>
+        {
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Name = "Goblin Warrior",
+                Type = NpcMonsterType.Humanoid,
+                Level = 1,
+                Description = "A small but fierce goblin warrior armed with crude weapons.",
+                ArmorClass = 16,
+                HitPoints = 15,
+                MaxHitPoints = 15,
+                Speed = "25 feet",
+                OwnerUserId = defaultUserId,
+                SessionId = null, // Available to all campaigns
+                IsTemplate = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Name = "Orc Brute",
+                Type = NpcMonsterType.Humanoid,
+                Level = 2,
+                Description = "A savage orc warrior with great strength and brutality.",
+                ArmorClass = 13,
+                HitPoints = 30,
+                MaxHitPoints = 30,
+                Speed = "25 feet",
+                OwnerUserId = defaultUserId,
+                SessionId = null,
+                IsTemplate = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Name = "Skeleton Guard",
+                Type = NpcMonsterType.Undead,
+                Level = 2,
+                Description = "An animated skeleton wearing tattered armor.",
+                ArmorClass = 16,
+                HitPoints = 20,
+                MaxHitPoints = 20,
+                Speed = "25 feet",
+                OwnerUserId = defaultUserId,
+                SessionId = null,
+                IsTemplate = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Name = "Town Guard",
+                Type = NpcMonsterType.Humanoid,
+                Level = 1,
+                Description = "A local guard who keeps the peace in town.",
+                ArmorClass = 18,
+                HitPoints = 22,
+                MaxHitPoints = 22,
+                Speed = "25 feet",
+                OwnerUserId = defaultUserId,
+                SessionId = null,
+                IsTemplate = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            }
         };
     }
 
@@ -386,7 +518,7 @@ public class MonsterData
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
-    public string Type { get; set; } = string.Empty;
+    public NpcMonsterType Type { get; set; }
     public int Level { get; set; }
     public string Description { get; set; } = string.Empty;
     public int ArmorClass { get; set; }
@@ -415,13 +547,28 @@ public class CombatEncounter
 // Request models
 public class CreateMonsterRequest
 {
+    [Required]
+    [StringLength(100, MinimumLength = 1)]
     public string Name { get; set; } = string.Empty;
-    public string Type { get; set; } = string.Empty;
+    
+    [Required]
+    public string Type { get; set; } = string.Empty;  // Keep as string for client compatibility, convert to enum internally
+    
+    [Range(-1, 25)]
     public int Level { get; set; }
+    
+    [StringLength(1000)]
     public string? Description { get; set; }
+    
+    [Range(10, 50)]
     public int ArmorClass { get; set; }
+    
+    [Range(1, 1000)]
     public int HitPoints { get; set; }
+    
+    [StringLength(100)]
     public string? Speed { get; set; }
+    
     public Guid? SessionId { get; set; }
     public bool IsTemplate { get; set; }
 }
@@ -429,7 +576,7 @@ public class CreateMonsterRequest
 public class UpdateMonsterRequest
 {
     public string Name { get; set; } = string.Empty;
-    public string Type { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty;  // Keep as string for client compatibility
     public int Level { get; set; }
     public string? Description { get; set; }
     public int ArmorClass { get; set; }
@@ -462,16 +609,17 @@ public class MonsterResponse
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
-    public string Type { get; set; } = string.Empty;
+    public NpcMonsterType Type { get; set; }
     public int Level { get; set; }
-    public string Description { get; set; } = string.Empty;
-    public int ArmorClass { get; set; }
-    public int HitPoints { get; set; }
-    public int MaxHitPoints { get; set; }
-    public string Speed { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public int? ArmorClass { get; set; }
+    public int? HitPoints { get; set; }
+    public int? Speed { get; set; }
     public bool IsTemplate { get; set; }
+    public Guid? OwnerUserId { get; set; }
+    public Guid? SessionId { get; set; }
     public DateTime CreatedAt { get; set; }
-    public DateTime UpdatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
 }
 
 public class MonsterEncounterResponse

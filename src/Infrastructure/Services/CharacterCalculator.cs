@@ -3,6 +3,7 @@ using PathfinderCampaignManager.Application.Common.Interfaces;
 using PathfinderCampaignManager.Application.Common.Models;
 using PathfinderCampaignManager.Domain.Entities;
 using PathfinderCampaignManager.Domain.Enums;
+using PathfinderCampaignManager.Domain.Entities.Pathfinder;
 using PathfinderCampaignManager.Domain.Interfaces;
 
 namespace PathfinderCampaignManager.Infrastructure.Services;
@@ -149,7 +150,7 @@ public class CharacterCalculator : ICharacterCalculator
         );
 
         // Initialize proficiencies
-        calculated.Proficiencies = new Dictionary<string, ProficiencyLevel>();
+        calculated.Proficiencies = new Dictionary<string, ProficiencyRank>();
         calculated.ProficiencyBonuses = new Dictionary<string, int>();
 
         // Initialize feat slots

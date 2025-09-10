@@ -1,5 +1,7 @@
 @using PathfinderCampaignManager.Presentation.Client.Services
 @inject CampaignSignalRService CampaignService
+@inject HttpClient Http
+@inject IAuthenticationService AuthService
 @implements IAsyncDisposable
 
 <div class="campaign-status-panel @(IsExpanded ? "expanded" : "collapsed")">
@@ -123,7 +125,8 @@
     {
         try
         {
-            await CampaignService.StartAsync("https://localhost:7082");
+            var accessToken = await AuthService.GetTokenAsync();
+            await CampaignService.StartAsync(accessToken);
             await CampaignService.JoinCampaignAsync(CampaignId, UserId, UserName);
             IsConnected = CampaignService.IsConnected;
             StateHasChanged();

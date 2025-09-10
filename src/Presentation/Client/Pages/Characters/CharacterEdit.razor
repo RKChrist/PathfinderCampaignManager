@@ -1,0 +1,365 @@
+@page "/characters/{CharacterId:guid}/edit"
+@using PathfinderCampaignManager.Presentation.Shared.Models
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<div class="character-edit-page">
+    @if (IsLoading)
+    {
+        <div class="loading-container">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Loading character...</p>
+        </div>
+    }
+    else if (Character == null)
+    {
+        <div class="error-container">
+            <i class="fas fa-exclamation-triangle"></i>
+            <h3>Character Not Found</h3>
+            <p>The character you're trying to edit doesn't exist or you don't have permission to edit it.</p>
+            <a href="/campaigns" class="btn btn-primary">
+                <i class="fas fa-arrow-left"></i>
+                Back to Campaigns
+            </a>
+        </div>
+    }
+    else
+    {
+        <div class="page-header">
+            <h1>Edit Character</h1>
+            <div class="header-actions">
+                <button class="btn btn-secondary" @onclick="Cancel">
+                    <i class="fas fa-times"></i>
+                    Cancel
+                </button>
+                <button class="btn btn-primary" @onclick="SaveCharacter" disabled="@IsSaving">
+                    @if (IsSaving)
+                    {
+                        <i class="fas fa-spinner fa-spin"></i>
+                    }
+                    else
+                    {
+                        <i class="fas fa-save"></i>
+                    }
+                    Save Changes
+                </button>
+            </div>
+        </div>
+
+        <div class="edit-form">
+            <div class="form-section">
+                <h3>Basic Information</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="character-name">Name</label>
+                        <input type="text" id="character-name" @bind="EditModel.Name" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label for="character-level">Level</label>
+                        <input type="number" id="character-level" @bind="EditModel.Level" min="1" max="20" class="form-control" />
+                    </div>
+                </div>
+            </div>
+
+            @if (EditModel.AbilityScores.Any())
+            {
+                <div class="form-section">
+                    <h3>Ability Scores</h3>
+                    <div class="ability-edit-grid">
+                        @foreach (var ability in EditModel.AbilityScores.ToList())
+                        {
+                            <div class="ability-edit-item">
+                                <label>@ability.Key</label>
+                                <input type="number" @bind="EditModel.AbilityScores[ability.Key]" 
+                                       min="1" max="30" class="form-control ability-input" />
+                                <span class="modifier-display">@FormatModifier(GetModifier(ability.Value))</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            @if (EditModel.Skills.Any())
+            {
+                <div class="form-section">
+                    <h3>Skills</h3>
+                    <div class="skills-edit-grid">
+                        @foreach (var skill in EditModel.Skills.ToList())
+                        {
+                            <div class="skill-edit-item">
+                                <label>@skill.Key</label>
+                                <select @bind="EditModel.Skills[skill.Key]" class="form-control">
+                                    <option value="Untrained">Untrained</option>
+                                    <option value="Trained">Trained</option>
+                                    <option value="Expert">Expert</option>
+                                    <option value="Master">Master</option>
+                                    <option value="Legendary">Legendary</option>
+                                </select>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            @if (EditModel.Feats.Any())
+            {
+                <div class="form-section">
+                    <h3>Feats</h3>
+                    <div class="feats-edit-list">
+                        @for (int i = 0; i < EditModel.Feats.Count; i++)
+                        {
+                            var index = i;
+                            <div class="feat-edit-item">
+                                <input type="text" @bind="EditModel.Feats[index]" class="form-control" placeholder="Feat name" />
+                                <button type="button" class="btn btn-danger btn-sm" @onclick="() => RemoveFeat(index)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        }
+                        <button type="button" class="btn btn-secondary btn-sm" @onclick="AddFeat">
+                            <i class="fas fa-plus"></i>
+                            Add Feat
+                        </button>
+                    </div>
+                </div>
+            }
+
+            @if (EditModel.Equipment.Any())
+            {
+                <div class="form-section">
+                    <h3>Equipment</h3>
+                    <div class="equipment-edit-list">
+                        @for (int i = 0; i < EditModel.Equipment.Count; i++)
+                        {
+                            var index = i;
+                            <div class="equipment-edit-item">
+                                <input type="text" @bind="EditModel.Equipment[index]" class="form-control" placeholder="Equipment item" />
+                                <button type="button" class="btn btn-danger btn-sm" @onclick="() => RemoveEquipment(index)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        }
+                        <button type="button" class="btn btn-secondary btn-sm" @onclick="AddEquipment">
+                            <i class="fas fa-plus"></i>
+                            Add Equipment
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<style>
+.character-edit-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.loading-container, .error-container {
+    text-align: center;
+    padding: 4rem 2rem;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.page-header h1 {
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.header-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 0.375rem;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-primary {
+    background: var(--primary-color);
+    color: white;
+}
+
+.btn-secondary {
+    background: var(--surface-background);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.btn-danger {
+    background: var(--error-color);
+    color: white;
+}
+
+.btn-sm {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+.edit-form {
+    display: grid;
+    gap: 2rem;
+}
+
+.form-section {
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+}
+
+.form-section h3 {
+    margin: 0 0 1.5rem 0;
+    color: var(--text-primary);
+    font-size: 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.75rem;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-group label {
+    font-weight: 500;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+}
+
+.form-control {
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.375rem;
+    font-size: 1rem;
+    transition: border-color 0.2s ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
+}
+
+.ability-edit-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+}
+
+.ability-edit-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    text-align: center;
+}
+
+.ability-edit-item label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.ability-input {
+    text-align: center;
+    font-weight: 600;
+}
+
+.modifier-display {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.skills-edit-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.skill-edit-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.skill-edit-item label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.feats-edit-list, .equipment-edit-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.feat-edit-item, .equipment-edit-item {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.feat-edit-item .form-control,
+.equipment-edit-item .form-control {
+    flex: 1;
+}
+
+@@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+    
+    .header-actions {
+        justify-content: center;
+    }
+    
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .ability-edit-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .skills-edit-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>

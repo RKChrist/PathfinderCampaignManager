@@ -22,10 +22,22 @@ public class CombatParticipant
     public int CurrentHitPoints { get; set; } = 0;
     public int ArmorClass { get; set; } = 10;
     public int Perception { get; set; } = 0;
+    public int PassivePerception { get; set; } = 0;
     public int Fortitude { get; set; } = 0;
     public int Reflex { get; set; } = 0;
     public int Will { get; set; } = 0;
+    public int FortitudeSave { get; set; } = 0;
+    public int ReflexSave { get; set; } = 0;
+    public int WillSave { get; set; } = 0;
     public List<string> Conditions { get; set; } = new();
     public bool IsPlayerCharacter { get; set; } = true;
+    public bool IsHidden { get; set; } = false;
+    public string CreatureType { get; set; } = string.Empty;
     public string? CharacterId { get; set; }
+    public string? PlayerId { get; set; }
+    public string? Ancestry { get; set; } = string.Empty;
+    public string? Class { get; set; } = string.Empty;
+    public int Level { get; set; } = 1;
+    public int InitiativeModifier { get; set; } = 0;
+    public string? Notes { get; set; } = string.Empty;
 }

@@ -14,6 +14,7 @@ public partial class MonsterBuilder : ComponentBase
     private bool isLoading = false;
 
     // Form inputs for arrays/lists
+    private string creatureType = "Humanoid";
     private string traitsInput = string.Empty;
     private string immunitiesInput = string.Empty;
     private string resistancesInput = string.Empty;
@@ -101,26 +102,42 @@ public partial class MonsterBuilder : ComponentBase
             // Process form inputs into monster properties
             ProcessFormInputs();
 
+            // Create the request object in the format the server expects
+            var request = new CreateMonsterRequest
+            {
+                Name = monster.Name,
+                Type = creatureType,
+                Level = monster.Level,
+                Description = monster.Description,
+                ArmorClass = monster.ArmorClass,
+                HitPoints = monster.HitPoints,
+                Speed = monster.Speeds.TryGetValue("land", out var landSpeed) ? $"{landSpeed} feet" : "25 feet",
+                SessionId = CampaignId,
+                IsTemplate = false
+            };
+
+            Console.WriteLine($"Sending monster request: Name='{request.Name}', Type='{request.Type}', Level={request.Level}, AC={request.ArmorClass}, HP={request.HitPoints}, Speed='{request.Speed}'");
+
             // Save monster via API
-            var response = await Http.PostAsJsonAsync("api/monsters", monster);
+            var response = await Http.PostAsJsonAsync("api/npcmonster", request);
             
             if (response.IsSuccessStatusCode)
             {
-                var monsterId = await response.Content.ReadFromJsonAsync<string>();
+                var monsterId = await response.Content.ReadFromJsonAsync<Guid>();
                 
                 if (CampaignId.HasValue)
                 {
-                    Navigation.NavigateTo($"/campaigns/{CampaignId}/monsters/{monsterId}");
+                    Navigation.NavigateTo($"/campaigns/{CampaignId}");
                 }
                 else
                 {
-                    Navigation.NavigateTo($"/monsters/{monsterId}");
+                    Navigation.NavigateTo($"/npc-monsters");
                 }
             }
             else
             {
-                // Handle error
-                Console.WriteLine($"Failed to save monster: {response.StatusCode}");
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Failed to save monster: {response.StatusCode} - {errorContent}");
             }
         }
         catch (Exception ex)
@@ -204,5 +221,18 @@ public partial class MonsterBuilder : ComponentBase
     private string FormatModifier(int value)
     {
         return value >= 0 ? $"+{value}" : value.ToString();
+    }
+
+    public class CreateMonsterRequest
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Type { get; set; } = string.Empty;
+        public int Level { get; set; }
+        public string? Description { get; set; }
+        public int ArmorClass { get; set; }
+        public int HitPoints { get; set; }
+        public string? Speed { get; set; }
+        public Guid? SessionId { get; set; }
+        public bool IsTemplate { get; set; }
     }
 }

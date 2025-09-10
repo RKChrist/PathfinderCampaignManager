@@ -27,6 +27,7 @@ public class PfClass : BaseEntity
     public Progression<SaveProgression>? FortitudeProgression { get; set; }
     public Progression<SaveProgression>? ReflexProgression { get; set; }
     public Progression<SaveProgression>? WillProgression { get; set; }
+    public Dictionary<string, List<ProficiencyRank>> SaveProgressions { get; set; } = new();
     public Progression<PerceptionProgression>? PerceptionProgression { get; set; }
     public List<Progression<SkillProgression>> SkillProgressions { get; set; } = new();
     public List<Progression<WeaponProgression>> WeaponProgressions { get; set; } = new();

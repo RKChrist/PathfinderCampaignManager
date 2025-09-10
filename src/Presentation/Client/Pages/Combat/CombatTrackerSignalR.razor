@@ -1,10 +1,14 @@
 @page "/combat-signalr/{combatId:guid?}"
 @page "/combat-signalr"
 @using PathfinderCampaignManager.Presentation.Client.Services
+@using PathfinderCampaignManager.Presentation.Client.Store.Auth
 @using PathfinderCampaignManager.Presentation.Shared.Models
 @using System.ComponentModel.DataAnnotations
+@using Fluxor
 @inject CombatSignalRService SignalRService
+@inject HttpClient Http
 @inject IJSRuntime JSRuntime
+@inject IState<AuthState> AuthState
 @implements IAsyncDisposable
 
 <PageTitle>Real-Time Combat Tracker</PageTitle>
@@ -74,9 +78,12 @@
                 <h5 class="mb-0">Initiative Order</h5>
             </div>
             <div class="list-group list-group-flush">
-                @foreach (var participant in _session.Participants.OrderByDescending(p => p.Initiative))
+                @{
+                    var orderedParticipants = _session.Participants.OrderByDescending(p => p.Initiative).ToList();
+                }
+                @foreach (var participant in orderedParticipants)
                 {
-                    var participantIndex = _session.Participants.OrderByDescending(p => p.Initiative).ToList().IndexOf(participant);
+                    var participantIndex = orderedParticipants.IndexOf(participant);
                     var isCurrentTurn = _session.IsActive && participantIndex == _session.CurrentTurn;
                     <div class="list-group-item @(isCurrentTurn ? "list-group-item-warning" : "")">
                         <div class="row align-items-center">
@@ -99,38 +106,91 @@
                             <div class="col-md-2 text-center">
                                 <strong>Init: @participant.Initiative</strong>
                                 <br>
-                                <input type="number" class="form-control form-control-sm mt-1" 
-                                       value="@participant.Initiative" 
-                                       @onchange="@((e) => UpdateInitiative(participant.Id.ToString(), int.Parse(e.Value?.ToString() ?? "0")))"
-                                       style="width: 70px;" />
+                                @if (CanEditParticipant(participant))
+                                {
+                                    <input type="number" class="form-control form-control-sm mt-1" 
+                                           value="@participant.Initiative" 
+                                           @onchange="@((e) => UpdateInitiative(participant.Id.ToString(), int.Parse(e.Value?.ToString() ?? "0")))"
+                                           style="width: 70px;" />
+                                }
+                                else
+                                {
+                                    <small class="text-muted">@participant.Initiative</small>
+                                }
                             </div>
                             <div class="col-md-2 text-center">
                                 <strong>HP: @participant.CurrentHitPoints / @participant.HitPoints</strong>
-                                <div class="d-flex gap-1 mt-1">
-                                    <input type="number" class="form-control form-control-sm" 
-                                           value="@participant.CurrentHitPoints" 
-                                           @onchange="@((e) => UpdateHitPoints(participant.Id.ToString(), int.Parse(e.Value?.ToString() ?? "0"), participant.HitPoints))"
-                                           style="width: 60px;" />
-                                    <span class="align-self-center">/</span>
-                                    <input type="number" class="form-control form-control-sm" 
-                                           value="@participant.HitPoints" 
-                                           @onchange="@((e) => UpdateHitPoints(participant.Id.ToString(), participant.CurrentHitPoints, int.Parse(e.Value?.ToString() ?? "0")))"
-                                           style="width: 60px;" />
-                                </div>
+                                @if (CanEditParticipant(participant))
+                                {
+                                    <div class="d-flex gap-1 mt-1">
+                                        <input type="number" class="form-control form-control-sm" 
+                                               value="@participant.CurrentHitPoints" 
+                                               @onchange="@((e) => UpdateHitPoints(participant.Id.ToString(), int.Parse(e.Value?.ToString() ?? "0"), participant.HitPoints))"
+                                               style="width: 60px;" />
+                                        <span class="align-self-center">/</span>
+                                        <input type="number" class="form-control form-control-sm" 
+                                               value="@participant.HitPoints" 
+                                               @onchange="@((e) => UpdateHitPoints(participant.Id.ToString(), participant.CurrentHitPoints, int.Parse(e.Value?.ToString() ?? "0")))"
+                                               style="width: 60px;" />
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="mt-1">
+                                        <small class="text-muted">@participant.CurrentHitPoints / @participant.HitPoints</small>
+                                    </div>
+                                }
                             </div>
                             <div class="col-md-2 text-center">
                                 <strong>AC: @participant.ArmorClass</strong>
+                                @if (CanEditParticipant(participant))
+                                {
+                                    <br>
+                                    <input type="number" class="form-control form-control-sm mt-1" 
+                                           value="@participant.ArmorClass" 
+                                           @onchange="@((e) => UpdateArmorClass(participant.Id.ToString(), int.Parse(e.Value?.ToString() ?? "10")))"
+                                           style="width: 60px;" />
+                                }
                                 <br>
                                 <small class="text-muted">
                                     Perc: @participant.Perception
                                 </small>
                             </div>
                             <div class="col-md-2 text-center">
-                                <small class="text-muted">
-                                    F: @participant.Fortitude<br>
-                                    R: @participant.Reflex<br>
-                                    W: @participant.Will
-                                </small>
+                                @if (CanEditParticipant(participant))
+                                {
+                                    <div class="d-flex flex-column gap-1">
+                                        <div class="d-flex align-items-center">
+                                            <small class="me-1">F:</small>
+                                            <input type="number" class="form-control form-control-sm" 
+                                                   value="@participant.Fortitude" 
+                                                   @onchange="@((e) => UpdateSave(participant.Id.ToString(), "Fortitude", int.Parse(e.Value?.ToString() ?? "0")))"
+                                                   style="width: 45px;" />
+                                        </div>
+                                        <div class="d-flex align-items-center">
+                                            <small class="me-1">R:</small>
+                                            <input type="number" class="form-control form-control-sm" 
+                                                   value="@participant.Reflex" 
+                                                   @onchange="@((e) => UpdateSave(participant.Id.ToString(), "Reflex", int.Parse(e.Value?.ToString() ?? "0")))"
+                                                   style="width: 45px;" />
+                                        </div>
+                                        <div class="d-flex align-items-center">
+                                            <small class="me-1">W:</small>
+                                            <input type="number" class="form-control form-control-sm" 
+                                                   value="@participant.Will" 
+                                                   @onchange="@((e) => UpdateSave(participant.Id.ToString(), "Will", int.Parse(e.Value?.ToString() ?? "0")))"
+                                                   style="width: 45px;" />
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <small class="text-muted">
+                                        F: @participant.Fortitude<br>
+                                        R: @participant.Reflex<br>
+                                        W: @participant.Will
+                                    </small>
+                                }
                             </div>
                             <div class="col-md-1 text-end">
                                 <button class="btn btn-sm btn-outline-danger" 
@@ -303,7 +363,7 @@
     [Parameter] public Guid? CombatId { get; set; }
     [Parameter] [SupplyParameterFromQuery] public Guid? CampaignId { get; set; }
 
-    private CombatSession? _session = new CombatSession { Participants = new List<CombatParticipant>() };
+    private PathfinderCampaignManager.Presentation.Shared.Models.CombatSession? _session = new PathfinderCampaignManager.Presentation.Shared.Models.CombatSession();
     private bool _isConnected = false;
     private string _errorMessage = string.Empty;
     private bool _showAddModal = false;
@@ -316,7 +376,8 @@
     {
         if (CombatId == null)
         {
-            CombatId = Guid.NewGuid();
+            // If joining from a campaign, use the campaign ID as the combat ID
+            CombatId = CampaignId ?? Guid.NewGuid();
         }
 
         // Load campaign data if joining from a campaign
@@ -359,7 +420,7 @@
                     _errorMessage = "Joining combat session...";
                     StateHasChanged();
                     
-                    await SignalRService.JoinCombatAsync(CombatId.ToString()!, null);
+                    await SignalRService.JoinCombatAsync(CombatId.ToString()!, CampaignId?.ToString());
                     
                     _errorMessage = string.Empty;
                     StateHasChanged();
@@ -406,6 +467,30 @@
         }
     }
 
+    private async Task UpdateArmorClass(string participantId, int armorClass)
+    {
+        try
+        {
+            await SignalRService.UpdateArmorClassAsync(CombatId.ToString()!, participantId, armorClass);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to update armor class: {ex.Message}";
+        }
+    }
+
+    private async Task UpdateSave(string participantId, string saveType, int value)
+    {
+        try
+        {
+            await SignalRService.UpdateSaveAsync(CombatId.ToString()!, participantId, saveType, value);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to update {saveType} save: {ex.Message}";
+        }
+    }
+
     private async Task LoadCampaignData()
     {
         if (!CampaignId.HasValue) return;
@@ -413,24 +498,58 @@
         _isLoadingCampaignData = true;
         try
         {
-            // Load campaign characters - mock data for now
-            _campaignCharacters = new List<CampaignCharacter>
+            // Try to load real campaign data first
+            try
             {
-                new() { Id = Guid.NewGuid(), Name = "Aelindra", Class = "Ranger", Level = 3, HitPoints = 28 },
-                new() { Id = Guid.NewGuid(), Name = "Thorik", Class = "Fighter", Level = 3, HitPoints = 35 },
-                new() { Id = Guid.NewGuid(), Name = "Lyra", Class = "Wizard", Level = 3, HitPoints = 20 }
-            };
+                var charactersResponse = await Http.GetFromJsonAsync<List<CampaignCharacter>>($"api/campaigns/{CampaignId}/characters");
+                if (charactersResponse != null)
+                {
+                    _campaignCharacters = charactersResponse;
+                }
+            }
+            catch (HttpRequestException)
+            {
+                // API endpoint doesn't exist yet, use mock data
+                Console.WriteLine("Using mock character data - API endpoint not implemented");
+            }
 
-            // Load campaign NPCs/Monsters - mock data for now
-            _campaignNpcs = new List<NpcMonster>
+            try
             {
-                new() { Id = Guid.NewGuid(), Name = "Goblin Warrior", IsNpc = false, HitPoints = 18, ArmorClass = 15 },
-                new() { Id = Guid.NewGuid(), Name = "Orc Brute", IsNpc = false, HitPoints = 25, ArmorClass = 13 },
-                new() { Id = Guid.NewGuid(), Name = "Town Guard", IsNpc = true, HitPoints = 22, ArmorClass = 16 }
-            };
+                var npcsResponse = await Http.GetFromJsonAsync<List<NpcMonster>>($"api/campaigns/{CampaignId}/npcs");
+                if (npcsResponse != null)
+                {
+                    _campaignNpcs = npcsResponse;
+                }
+            }
+            catch (HttpRequestException)
+            {
+                // API endpoint doesn't exist yet, use mock data
+                Console.WriteLine("Using mock NPC data - API endpoint not implemented");
+            }
+
+            // Fallback to mock data if API calls failed
+            if (!_campaignCharacters.Any())
+            {
+                _campaignCharacters = new List<CampaignCharacter>
+                {
+                    new() { Id = Guid.NewGuid(), Name = "Aelindra", Class = "Ranger", Level = 3, HitPoints = 28, ArmorClass = 16 },
+                    new() { Id = Guid.NewGuid(), Name = "Thorik", Class = "Fighter", Level = 3, HitPoints = 35, ArmorClass = 18 },
+                    new() { Id = Guid.NewGuid(), Name = "Lyra", Class = "Wizard", Level = 3, HitPoints = 20, ArmorClass = 13 }
+                };
+            }
+
+            if (!_campaignNpcs.Any())
+            {
+                _campaignNpcs = new List<NpcMonster>
+                {
+                    new() { Id = Guid.NewGuid(), Name = "Goblin Warrior", IsNpc = false, HitPoints = 18, ArmorClass = 15, Initiative = 12 },
+                    new() { Id = Guid.NewGuid(), Name = "Orc Brute", IsNpc = false, HitPoints = 25, ArmorClass = 13, Initiative = 8 },
+                    new() { Id = Guid.NewGuid(), Name = "Town Guard", IsNpc = true, HitPoints = 22, ArmorClass = 16, Initiative = 10 }
+                };
+            }
 
             // Auto-populate NPCs into combat if this is a new combat session
-            if (_session?.Participants.Count == 0 && _campaignNpcs.Any())
+            if (_session?.Participants?.Count == 0 && _campaignNpcs.Any())
             {
                 await AutoPopulateNpcs();
             }
@@ -438,6 +557,7 @@
         catch (Exception ex)
         {
             Console.WriteLine($"Failed to load campaign data: {ex.Message}");
+            _errorMessage = "Failed to load campaign data. Using default encounter.";
         }
         finally
         {
@@ -447,19 +567,21 @@
 
     private async Task AutoPopulateNpcs()
     {
-        if (_session == null) return;
+        if (_session?.Participants == null || _campaignNpcs == null) return;
 
         foreach (var npc in _campaignNpcs.Take(5)) // Limit to 5 NPCs to avoid overwhelming
         {
-            var participant = new CombatParticipant
+            if (string.IsNullOrWhiteSpace(npc.Name)) continue;
+
+            var participant = new PathfinderCampaignManager.Presentation.Shared.Models.CombatParticipant
             {
                 Id = Guid.NewGuid(),
                 Name = npc.Name,
                 Type = npc.IsNpc ? "NPC" : "Monster",
-                HitPoints = npc.HitPoints,
-                CurrentHitPoints = npc.HitPoints,
-                ArmorClass = npc.ArmorClass,
-                Initiative = 0, // Will be rolled later
+                HitPoints = Math.Max(1, npc.HitPoints), // Ensure at least 1 HP
+                CurrentHitPoints = Math.Max(1, npc.HitPoints),
+                ArmorClass = Math.Max(10, npc.ArmorClass), // Ensure at least AC 10
+                Initiative = npc.Initiative, // Use configured initiative or 0
                 IsPlayerCharacter = false,
                 CharacterId = npc.Id.ToString()
             };
@@ -628,22 +750,25 @@
     }
 
     // SignalR Event Handlers
-    private async void OnCombatStateUpdated(CombatSession session)
+    private void OnCombatStateUpdated(PathfinderCampaignManager.Presentation.Shared.Models.CombatSession session)
     {
-        try
+        InvokeAsync(async () =>
         {
-            if (session != null)
+            try
             {
-                _session = session;
-                _errorMessage = string.Empty;
-                await InvokeAsync(StateHasChanged);
+                if (session != null)
+                {
+                    _session = session;
+                    _errorMessage = string.Empty;
+                    StateHasChanged();
+                }
             }
-        }
-        catch (Exception ex)
-        {
-            _errorMessage = $"Error updating combat state: {ex.Message}";
-            await InvokeAsync(StateHasChanged);
-        }
+            catch (Exception ex)
+            {
+                _errorMessage = $"Error updating combat state: {ex.Message}";
+                StateHasChanged();
+            }
+        });
     }
 
     private async void OnInitiativeUpdated(string participantId, int initiative)
@@ -666,14 +791,22 @@
         await InvokeAsync(StateHasChanged);
     }
 
-    private async void OnCombatStarted(CombatSession session)
+    private void OnCombatStarted(PathfinderCampaignManager.Presentation.Shared.Models.CombatSession session)
     {
-        await InvokeAsync(StateHasChanged);
+        InvokeAsync(() =>
+        {
+            StateHasChanged();
+            return Task.CompletedTask;
+        });
     }
 
-    private async void OnCombatEnded(CombatSession session)
+    private void OnCombatEnded(PathfinderCampaignManager.Presentation.Shared.Models.CombatSession session)
     {
-        await InvokeAsync(StateHasChanged);
+        InvokeAsync(() =>
+        {
+            StateHasChanged();
+            return Task.CompletedTask;
+        });
     }
 
     private async void OnTurnChanged(int currentTurn, int round)
@@ -694,6 +827,21 @@
         
         SignalRService.UnsubscribeFromEvents();
         await SignalRService.DisposeAsync();
+    }
+
+    private bool CanEditParticipant(CombatParticipant participant)
+    {
+        // GMs can edit all participants
+        if (AuthState.Value.User?.Role == "GameMaster" || AuthState.Value.User?.Role == "Admin")
+            return true;
+            
+        // Players can only edit their own characters
+        if (participant.IsPlayerCharacter && !string.IsNullOrEmpty(participant.PlayerId))
+        {
+            return participant.PlayerId == AuthState.Value.User?.Id.ToString();
+        }
+        
+        return false;
     }
 
     public class AddParticipantModel

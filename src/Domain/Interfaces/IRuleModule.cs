@@ -33,7 +33,7 @@ public interface ICalculatedCharacter
     Dictionary<string, int> AbilityModifiers { get; }
     
     // Proficiencies
-    Dictionary<string, ProficiencyLevel> Proficiencies { get; }
+    Dictionary<string, ProficiencyRank> Proficiencies { get; }
     Dictionary<string, int> ProficiencyBonuses { get; }
     Dictionary<string, int> Skills { get; }
     
@@ -80,7 +80,7 @@ public class CalculatedCharacter : ICalculatedCharacter
     public Dictionary<string, int> AbilityScores { get; set; } = new();
     public Dictionary<string, int> AbilityModifiers { get; set; } = new();
     
-    public Dictionary<string, ProficiencyLevel> Proficiencies { get; set; } = new();
+    public Dictionary<string, ProficiencyRank> Proficiencies { get; set; } = new();
     public Dictionary<string, int> ProficiencyBonuses { get; set; } = new();
     public Dictionary<string, int> Skills { get; set; } = new();
     

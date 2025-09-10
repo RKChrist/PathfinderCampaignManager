@@ -1,0 +1,740 @@
+@page "/combat/campaign/{campaignId:guid}"
+@using PathfinderCampaignManager.Presentation.Client.Services
+@using PathfinderCampaignManager.Presentation.Client.Components.CharacterSheet
+@using PathfinderCampaignManager.Presentation.Shared.Models
+@using PathfinderCampaignManager.Domain.Entities.Combat
+@inject CombatSignalRService SignalRService
+@inject HttpClient Http
+@inject IJSRuntime JSRuntime
+@inject IAuthenticationService AuthService
+@implements IAsyncDisposable
+
+<PageTitle>Combat Tracker - @CampaignName</PageTitle>
+
+<div class="combat-tracker">
+    <div class="combat-header">
+        <div class="combat-title">
+            <h2>
+                <i class="fas fa-swords"></i>
+                Combat Tracker
+                @if (!string.IsNullOrEmpty(CampaignName))
+                {
+                    <small>@CampaignName</small>
+                }
+            </h2>
+        </div>
+        <div class="combat-controls">
+            <div class="connection-status">
+                <span class="status-badge @(_isConnected ? "connected" : "disconnected")">
+                    @(_isConnected ? "Connected" : "Disconnected")
+                </span>
+                @if (_combatSession != null)
+                {
+                    <span class="round-badge">
+                        @(_combatSession.IsActive ? $"Round {_combatSession.Round}" : "Setup")
+                    </span>
+                }
+            </div>
+            @if (_isDM)
+            {
+                <div class="dm-controls">
+                    @if (_combatSession?.IsActive != true)
+                    {
+                        <button class="btn btn-success" @onclick="StartCombat">
+                            <i class="fas fa-play"></i> Start Combat
+                        </button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-primary" @onclick="NextTurn">
+                            <i class="fas fa-forward"></i> Next Turn
+                        </button>
+                        <button class="btn btn-warning" @onclick="PauseCombat">
+                            <i class="fas fa-pause"></i> Pause
+                        </button>
+                        <button class="btn btn-danger" @onclick="EndCombat">
+                            <i class="fas fa-stop"></i> End Combat
+                        </button>
+                    }
+                    <button class="btn btn-outline-primary" @onclick="ShowAddParticipantModal">
+                        <i class="fas fa-plus"></i> Add Participant
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+
+    @if (_combatSession?.Participants?.Any() == true)
+    {
+        <div class="combat-table-container">
+            <table class="combat-table">
+                <thead>
+                    <tr>
+                        <th class="turn-indicator"></th>
+                        <th class="participant-name">Name</th>
+                        <th class="initiative">Init</th>
+                        <th class="hit-points">HP</th>
+                        <th class="armor-class">AC</th>
+                        <th class="conditions">Conditions</th>
+                        @if (_isDM)
+                        {
+                            <th class="passive-perception">Perception</th>
+                            <th class="saves">Saves</th>
+                        }
+                        <th class="actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{
+                        var orderedParticipants = _combatSession.Participants
+                            .OrderByDescending(p => p.Initiative)
+                            .ThenBy(p => p.Name)
+                            .ToList();
+                    }
+                    @for (int i = 0; i < orderedParticipants.Count; i++)
+                    {
+                        var participant = orderedParticipants[i];
+                        var isCurrentTurn = _combatSession.IsActive && i == _combatSession.CurrentTurn;
+                        var isVisible = ShouldShowParticipant(participant);
+                        
+                        @if (isVisible)
+                        {
+                            <tr class="participant-row @(isCurrentTurn ? "current-turn" : "") @(participant.IsPlayerCharacter ? "pc" : "npc")">
+                                <td class="turn-indicator">
+                                    @if (isCurrentTurn)
+                                    {
+                                        <i class="fas fa-play current-turn-icon"></i>
+                                    }
+                                </td>
+                                <td class="participant-name">
+                                    <div class="participant-info">
+                                        <div class="name-container">
+                                            <span class="name">@participant.Name</span>
+                                            <span class="type-badge @participant.Type.ToString().ToLower()">
+                                                @GetParticipantTypeDisplay(participant.Type)
+                                            </span>
+                                        </div>
+                                        @if (!string.IsNullOrEmpty(participant.CreatureType) && (_isDM || participant.IsPlayerCharacter))
+                                        {
+                                            <small class="creature-type">@participant.CreatureType</small>
+                                        }
+                                    </div>
+                                </td>
+                                <td class="initiative">
+                                    @if (_isDM && !_combatSession.IsActive)
+                                    {
+                                        <input type="number" class="form-control form-control-sm" 
+                                               @bind="participant.Initiative" 
+                                               @bind:after="() => UpdateInitiative(participant.Id, participant.Initiative)" />
+                                    }
+                                    else
+                                    {
+                                        <span class="initiative-value">@participant.Initiative</span>
+                                    }
+                                </td>
+                                <td class="hit-points">
+                                    <div class="hp-container">
+                                        @if (_isDM || participant.IsPlayerCharacter)
+                                        {
+                                            <div class="hp-display">
+                                                <span class="current-hp @GetHPStatus(participant)">@participant.CurrentHitPoints</span>
+                                                <span class="hp-separator">/</span>
+                                                <span class="max-hp">@participant.HitPoints</span>
+                                            </div>
+                                            @if (_isDM)
+                                            {
+                                                <div class="hp-controls">
+                                                    <input type="number" class="form-control form-control-sm hp-input" 
+                                                           @bind="_hpInputs[participant.Id]" 
+                                                           placeholder="±HP" />
+                                                    <button class="btn btn-sm btn-success" @onclick="() => ApplyHealing(participant.Id)">
+                                                        <i class="fas fa-plus"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-danger" @onclick="() => ApplyDamage(participant.Id)">
+                                                        <i class="fas fa-minus"></i>
+                                                    </button>
+                                                </div>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="hp-hidden">Hidden</span>
+                                        }
+                                    </div>
+                                </td>
+                                <td class="armor-class">
+                                    @if (_isDM || participant.IsPlayerCharacter)
+                                    {
+                                        <span class="ac-value">@participant.ArmorClass</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="ac-hidden">?</span>
+                                    }
+                                </td>
+                                <td class="conditions">
+                                    <div class="conditions-container">
+                                        @foreach (var condition in participant.Conditions)
+                                        {
+                                            <span class="condition-badge" title="@GetConditionDescription(condition)">
+                                                @condition
+                                                @if (_isDM)
+                                                {
+                                                    <button class="btn-close btn-close-sm" @onclick="() => RemoveCondition(participant.Id, condition)"></button>
+                                                }
+                                            </span>
+                                        }
+                                        @if (_isDM)
+                                        {
+                                            <button class="btn btn-sm btn-outline-secondary add-condition-btn" 
+                                                    @onclick="() => ShowAddConditionModal(participant.Id)">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        }
+                                    </div>
+                                </td>
+                                @if (_isDM)
+                                {
+                                    <td class="passive-perception">@participant.PassivePerception</td>
+                                    <td class="saves">
+                                        <div class="saves-container">
+                                            <span class="save fort" title="Fortitude">F: @FormatModifier(participant.FortitudeSave)</span>
+                                            <span class="save reflex" title="Reflex">R: @FormatModifier(participant.ReflexSave)</span>
+                                            <span class="save will" title="Will">W: @FormatModifier(participant.WillSave)</span>
+                                        </div>
+                                    </td>
+                                }
+                                <td class="actions">
+                                    <div class="action-buttons">
+                                        <button class="btn btn-sm btn-outline-info sheet-btn" 
+                                                @onclick="() => ShowCharacterSheet(participant)">
+                                            <i class="fas fa-user"></i>
+                                        </button>
+                                        @if (_isDM)
+                                        {
+                                            <button class="btn btn-sm btn-outline-secondary notes-btn" 
+                                                    @onclick="() => ShowNotesModal(participant.Id)">
+                                                <i class="fas fa-sticky-note"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger remove-btn" 
+                                                    @onclick="() => RemoveParticipant(participant.Id)">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <div class="no-participants">
+            <div class="empty-state">
+                <i class="fas fa-users-slash"></i>
+                <h4>No Participants</h4>
+                <p>Add participants to start combat tracking.</p>
+                @if (_isDM)
+                {
+                    <button class="btn btn-primary" @onclick="ShowAddParticipantModal">
+                        <i class="fas fa-plus"></i> Add First Participant
+                    </button>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Character Sheet Modal -->
+<CharacterSheetModal IsVisible="_showCharacterSheetModal"
+                     IsVisibleChanged="(visible) => _showCharacterSheetModal = visible"
+                     Character="_selectedParticipant"
+                     IsPlayerCharacter="_selectedParticipant?.IsPlayerCharacter == true"
+                     IsDM="_isDM"
+                     OnEditCharacter="EditCharacter" />
+
+<!-- Add Participant Modal -->
+@if (_showAddParticipantModal)
+{
+    <div class="modal fade show" style="display: block;" @onclick="() => _showAddParticipantModal = false">
+        <div class="modal-dialog" @onclick:stopPropagation="true">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Participant</h5>
+                    <button type="button" class="btn-close" @onclick="() => _showAddParticipantModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="mb-3">
+                            <label class="form-label">Name</label>
+                            <input type="text" class="form-control" @bind="_newParticipantName" placeholder="Participant name" />
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Type</label>
+                                <select class="form-select" @bind="_newParticipantType">
+                                    <option value="@CombatParticipantType.PlayerCharacter">Player Character</option>
+                                    <option value="@CombatParticipantType.NonPlayerCharacter">NPC</option>
+                                    <option value="@CombatParticipantType.Monster">Monster</option>
+                                    <option value="@CombatParticipantType.Hazard">Hazard</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Initiative</label>
+                                <input type="number" class="form-control" @bind="_newParticipantInitiative" />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Hit Points</label>
+                                <input type="number" class="form-control" @bind="_newParticipantHP" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Armor Class</label>
+                                <input type="number" class="form-control" @bind="_newParticipantAC" />
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => _showAddParticipantModal = false">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="AddParticipant" disabled="@string.IsNullOrWhiteSpace(_newParticipantName)">Add Participant</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+<!-- Add Condition Modal -->
+@if (_showAddConditionModal && _selectedParticipant != null)
+{
+    <div class="modal fade show" style="display: block;" @onclick="() => _showAddConditionModal = false">
+        <div class="modal-dialog modal-sm" @onclick:stopPropagation="true">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Condition to @_selectedParticipant.Name</h5>
+                    <button type="button" class="btn-close" @onclick="() => _showAddConditionModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="condition-quick-select">
+                        @foreach (var condition in new[] { "Blinded", "Charmed", "Frightened", "Paralyzed", "Prone", "Stunned", "Unconscious", "Fatigued", "Sickened", "Slowed" })
+                        {
+                            <button type="button" class="btn btn-outline-warning btn-sm me-2 mb-2" @onclick="() => AddCondition(condition)">
+                                @condition
+                            </button>
+                        }
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => _showAddConditionModal = false">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+<style>
+.combat-tracker {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--background-color);
+}
+
+.combat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background: var(--surface-background);
+    border-bottom: 2px solid var(--border-color);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.combat-title h2 {
+    margin: 0;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.combat-title small {
+    color: var(--text-secondary);
+    font-weight: normal;
+}
+
+.combat-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.connection-status {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-badge.connected {
+    background: var(--success-color-20);
+    color: var(--success-color);
+}
+
+.status-badge.disconnected {
+    background: var(--error-color-20);
+    color: var(--error-color);
+}
+
+.round-badge {
+    padding: 0.25rem 0.75rem;
+    background: var(--primary-color-20);
+    color: var(--primary-color);
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.dm-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.combat-table-container {
+    flex: 1;
+    overflow: auto;
+    padding: 1rem;
+}
+
+.combat-table {
+    width: 100%;
+    background: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: fixed;
+}
+
+.combat-table th {
+    background: var(--surface-background);
+    color: var(--text-primary);
+    font-weight: 600;
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 2px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+/* Column width definitions for consistent alignment */
+.combat-table .turn-indicator {
+    width: 3rem;
+}
+
+.combat-table .participant-name {
+    width: 25%;
+    min-width: 180px;
+}
+
+.combat-table .initiative {
+    width: 5rem;
+}
+
+.combat-table .hit-points {
+    width: 8rem;
+}
+
+.combat-table .armor-class {
+    width: 4rem;
+}
+
+.combat-table .conditions {
+    width: 15%;
+    min-width: 120px;
+}
+
+.combat-table .passive-perception {
+    width: 5rem;
+}
+
+.combat-table .saves {
+    width: 8rem;
+}
+
+.combat-table .actions {
+    width: 8rem;
+}
+
+.combat-table th:first-child {
+    border-top-left-radius: 0.5rem;
+}
+
+.combat-table th:last-child {
+    border-top-right-radius: 0.5rem;
+}
+
+.participant-row {
+    transition: all 0.2s ease;
+}
+
+.participant-row:hover {
+    background: var(--surface-background);
+}
+
+.participant-row.current-turn {
+    background: var(--primary-color-10);
+    border-left: 4px solid var(--primary-color);
+}
+
+.participant-row.pc {
+    border-left: 3px solid var(--success-color);
+}
+
+.participant-row.npc {
+    border-left: 3px solid var(--warning-color);
+}
+
+.combat-table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+}
+
+.turn-indicator {
+    text-align: center;
+}
+
+.current-turn-icon {
+    color: var(--primary-color);
+    font-size: 1.1rem;
+}
+
+.participant-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.name-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.name {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.type-badge {
+    padding: 0.125rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.type-badge.playercharacter {
+    background: var(--success-color-20);
+    color: var(--success-color);
+}
+
+.type-badge.monster, .type-badge.nonplayercharacter {
+    background: var(--warning-color-20);
+    color: var(--warning-color);
+}
+
+.type-badge.hazard {
+    background: var(--error-color-20);
+    color: var(--error-color);
+}
+
+.creature-type {
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.initiative-value {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+}
+
+.hp-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+.hp-display {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-weight: 600;
+}
+
+.current-hp.healthy {
+    color: var(--success-color);
+}
+
+.current-hp.wounded {
+    color: var(--warning-color);
+}
+
+.current-hp.critical {
+    color: var(--error-color);
+}
+
+.current-hp.unconscious {
+    color: var(--text-secondary);
+    text-decoration: line-through;
+}
+
+.hp-controls {
+    display: flex;
+    gap: 0.25rem;
+    align-items: center;
+}
+
+.hp-input {
+    width: 60px;
+}
+
+.hp-hidden, .ac-hidden {
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.conditions-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    align-items: center;
+    min-height: 2rem;
+}
+
+.condition-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.125rem 0.5rem;
+    background: var(--warning-color-20);
+    color: var(--warning-color);
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.saves-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    font-size: 0.8rem;
+}
+
+.save {
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.125rem;
+    font-weight: 500;
+}
+
+.save.fort {
+    background: var(--error-color-10);
+    color: var(--error-color);
+}
+
+.save.reflex {
+    background: var(--success-color-10);
+    color: var(--success-color);
+}
+
+.save.will {
+    background: var(--primary-color-10);
+    color: var(--primary-color);
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.no-participants {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.empty-state {
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.empty-state i {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.empty-state h4 {
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+@@media (max-width: 1200px) {
+    .saves-container {
+        display: none;
+    }
+}
+
+@@media (max-width: 768px) {
+    .combat-header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+    
+    .combat-table {
+        font-size: 0.85rem;
+    }
+    
+    .combat-table th,
+    .combat-table td {
+        padding: 0.5rem 0.25rem;
+    }
+    
+    /* Adjust column widths for mobile */
+    .combat-table .participant-name {
+        width: 30%;
+        min-width: 120px;
+    }
+    
+    .combat-table .conditions {
+        width: 20%;
+        min-width: 80px;
+    }
+    
+    .combat-table .hit-points {
+        width: 6rem;
+    }
+    
+    .combat-table .actions {
+        width: 6rem;
+    }
+}
+</style>

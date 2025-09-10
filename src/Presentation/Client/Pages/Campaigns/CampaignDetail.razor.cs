@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
+using PathfinderCampaignManager.Domain.Enums;
 using PathfinderCampaignManager.Presentation.Client.Services;
 using PathfinderCampaignManager.Presentation.Client.Store.Auth;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text.Json;
 
 namespace PathfinderCampaignManager.Presentation.Client.Pages.Campaigns;
@@ -16,10 +18,19 @@ public partial class CampaignDetail : ComponentBase, IAsyncDisposable
     private List<CharacterDto> _campaignCharacters = new();
     private List<CharacterDto> _userCharacters = new();
     private List<PremadeEncounterResponse> _premadeEncounters = new();
+    private List<ActivityItem> _recentActivity = new();
+    private List<VariantRuleInfo> _variantRules = new();
     private bool _isLoading = true;
     private bool _isDM = false;
     private bool _isStartingEncounter = false;
     private string _errorMessage = string.Empty;
+    
+    // Combat setup modal
+    private bool _showCombatSetupModal = false;
+    private List<CharacterDto> _availableCharacters = new();
+    private List<MonsterResponse> _availableMonsters = new();
+    private HashSet<Guid> _selectedCharacters = new();
+    private HashSet<Guid> _selectedMonsters = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -28,6 +39,7 @@ public partial class CampaignDetail : ComponentBase, IAsyncDisposable
         await LoadCampaignCharacters();
         await LoadUserCharacters();
         await LoadPremadeEncounters();
+        await LoadRecentActivity();
     }
 
     private async Task LoadCurrentUser()
@@ -65,6 +77,7 @@ public partial class CampaignDetail : ComponentBase, IAsyncDisposable
                 if (_campaign != null && _currentUser != null)
                 {
                     _isDM = _campaign.DMUserId == _currentUser.Id;
+                    LoadVariantRules();
                 }
             }
             else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
@@ -126,6 +139,22 @@ public partial class CampaignDetail : ComponentBase, IAsyncDisposable
     private int GetDaysSince(DateTime dateTime)
     {
         return Math.Max(0, (int)(DateTime.UtcNow - dateTime).TotalDays);
+    }
+
+    private string GetTimeAgo(DateTime dateTime)
+    {
+        var timeSpan = DateTime.UtcNow - dateTime;
+        
+        if (timeSpan.TotalDays > 30)
+            return dateTime.ToString("MMM dd, yyyy");
+        else if (timeSpan.TotalDays >= 1)
+            return $"{(int)timeSpan.TotalDays}d ago";
+        else if (timeSpan.TotalHours >= 1)
+            return $"{(int)timeSpan.TotalHours}h ago";
+        else if (timeSpan.TotalMinutes >= 1)
+            return $"{(int)timeSpan.TotalMinutes}m ago";
+        else
+            return "Just now";
     }
 
     private async Task LoadCampaignCharacters()
@@ -273,6 +302,206 @@ public partial class CampaignDetail : ComponentBase, IAsyncDisposable
         };
     }
 
+    // Combat setup modal methods
+    private async Task OpenCombatSetup()
+    {
+        await LoadAvailableCharacters();
+        await LoadAvailableMonsters();
+        _showCombatSetupModal = true;
+        StateHasChanged();
+    }
+
+    private void CloseCombatSetup()
+    {
+        _showCombatSetupModal = false;
+        _selectedCharacters.Clear();
+        _selectedMonsters.Clear();
+        StateHasChanged();
+    }
+
+    private async Task LoadAvailableCharacters()
+    {
+        try
+        {
+            // Load characters from campaign sessions
+            _availableCharacters = _campaignCharacters.ToList();
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeAsync<object>("alert", $"Error loading characters: {ex.Message}");
+        }
+    }
+
+    private async Task LoadAvailableMonsters()
+    {
+        try
+        {
+            Console.WriteLine($"Loading monsters for campaign: {CampaignId}");
+            var response = await Http.GetAsync($"api/npcmonster?campaignId={CampaignId}");
+            Console.WriteLine($"Monster API response status: {response.StatusCode}");
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Monster API response content: {content}");
+                
+                _availableMonsters = JsonSerializer.Deserialize<List<MonsterResponse>>(content, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                }) ?? new List<MonsterResponse>();
+                
+                Console.WriteLine($"Loaded {_availableMonsters.Count} monsters");
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Failed to load monsters: {response.StatusCode} - {errorContent}");
+                _availableMonsters = new List<MonsterResponse>();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading monsters: {ex.Message}");
+            _availableMonsters = new List<MonsterResponse>();
+            await JSRuntime.InvokeAsync<object>("alert", $"Error loading monsters: {ex.Message}");
+        }
+    }
+
+    private void ToggleCharacterSelection(Guid characterId, ChangeEventArgs e)
+    {
+        bool isChecked = (bool)(e.Value ?? false);
+        if (isChecked)
+            _selectedCharacters.Add(characterId);
+        else
+            _selectedCharacters.Remove(characterId);
+    }
+
+    private void ToggleMonsterSelection(Guid monsterId, ChangeEventArgs e)
+    {
+        bool isChecked = (bool)(e.Value ?? false);
+        if (isChecked)
+            _selectedMonsters.Add(monsterId);
+        else
+            _selectedMonsters.Remove(monsterId);
+    }
+
+    private async Task StartSelectedCombat()
+    {
+        try
+        {
+            await SendSelectedParticipantsToCombat();
+            CloseCombatSetup();
+            Navigation.NavigateTo($"/combat-signalr?campaignId={CampaignId}");
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeAsync<object>("alert", $"Error starting combat: {ex.Message}");
+        }
+    }
+
+    private async Task SendSelectedParticipantsToCombat()
+    {
+        if (!_selectedCharacters.Any() && !_selectedMonsters.Any())
+            return;
+
+        try
+        {
+            // Send selected participants to combat tracker via SignalR
+            var selectedParticipants = new List<CombatParticipantRequest>();
+
+            // Add selected characters
+            foreach (var characterId in _selectedCharacters)
+            {
+                var character = _availableCharacters.FirstOrDefault(c => c.Id == characterId);
+                if (character != null)
+                {
+                    selectedParticipants.Add(new CombatParticipantRequest
+                    {
+                        Id = character.Id,
+                        Name = character.Name,
+                        Type = "PlayerCharacter",
+                        Initiative = 0, // Will be set during initiative rolls
+                        HitPoints = CalculateCharacterHitPoints(character),
+                        ArmorClass = CalculateCharacterAC(character),
+                        IsPlayerCharacter = true
+                    });
+                }
+            }
+
+            // Add selected monsters
+            foreach (var monsterId in _selectedMonsters)
+            {
+                var monster = _availableMonsters.FirstOrDefault(m => m.Id == monsterId);
+                if (monster != null)
+                {
+                    selectedParticipants.Add(new CombatParticipantRequest
+                    {
+                        Id = monster.Id,
+                        Name = monster.Name,
+                        Type = monster.Type.ToString(),
+                        Initiative = 0, // Will be set during initiative rolls
+                        HitPoints = monster.HitPoints ?? 10,
+                        ArmorClass = monster.ArmorClass ?? 15,
+                        IsPlayerCharacter = false
+                    });
+                }
+            }
+
+            // Send participants to campaign hub to distribute to combat tracker
+            // Note: In a real implementation, you would inject CampaignSignalRService
+            // For now, we'll use a direct HTTP call or implement a different approach
+            await NotifyCombatTrackerOfNewParticipants(selectedParticipants.Cast<object>().ToList());
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeAsync<object>("alert", $"Error sending participants to combat: {ex.Message}");
+        }
+    }
+
+    private int CalculateCharacterHitPoints(CharacterDto character)
+    {
+        // Simple HP calculation - in a real implementation this would be more complex
+        var constitution = character.AbilityScores.GetValueOrDefault("Constitution", 10);
+        var conModifier = (constitution - 10) / 2;
+        return Math.Max(1, character.Level * 8 + conModifier * character.Level + constitution);
+    }
+
+    private int CalculateCharacterAC(CharacterDto character)
+    {
+        // Simple AC calculation - in a real implementation this would consider armor, dexterity, etc.
+        var dexterity = character.AbilityScores.GetValueOrDefault("Dexterity", 10);
+        var dexModifier = (dexterity - 10) / 2;
+        return 10 + dexModifier; // Base AC calculation
+    }
+
+    private async Task NotifyCombatTrackerOfNewParticipants(List<object> participants)
+    {
+        try
+        {
+            // Send participants directly to combat endpoint to be added to active combat
+            var request = new
+            {
+                CampaignId = CampaignId,
+                Participants = participants
+            };
+
+            var response = await Http.PostAsJsonAsync("api/combat/add-participants", request);
+            if (response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"Successfully sent {participants.Count} participants to combat tracker");
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Failed to send participants to combat tracker: {errorContent}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error sending participants to combat tracker: {ex.Message}");
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         // Cleanup will be handled by CampaignStatusPanel
@@ -331,5 +560,135 @@ public partial class CampaignDetail : ComponentBase, IAsyncDisposable
         public int HitPoints { get; set; }
         public string Speed { get; set; } = string.Empty;
         public int Count { get; set; } = 1;
+    }
+
+    public class MonsterResponse
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public NpcMonsterType Type { get; set; }
+        public int Level { get; set; }
+        public string? Description { get; set; }
+        public int? ArmorClass { get; set; }
+        public int? HitPoints { get; set; }
+        public int? Speed { get; set; }
+        public bool IsTemplate { get; set; }
+        public Guid? OwnerUserId { get; set; }
+        public Guid? SessionId { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+    }
+
+    public class ActivityItem
+    {
+        public string Type { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string UserName { get; set; } = string.Empty;
+        public DateTime Timestamp { get; set; }
+        public string Icon { get; set; } = "fas fa-clock";
+        public string Color { get; set; } = "text-muted";
+    }
+
+    private async Task LoadRecentActivity()
+    {
+        try
+        {
+            _recentActivity.Clear();
+            
+            // Add campaign creation activity
+            if (_campaign != null)
+            {
+                _recentActivity.Add(new ActivityItem
+                {
+                    Type = "Campaign Created",
+                    Description = $"Campaign '{_campaign.Name}' was created",
+                    UserName = "DM",
+                    Timestamp = _campaign.CreatedAt,
+                    Icon = "fas fa-plus",
+                    Color = "text-success"
+                });
+            }
+
+            // Add character join activities
+            foreach (var character in _campaignCharacters.Take(10))
+            {
+                _recentActivity.Add(new ActivityItem
+                {
+                    Type = "Character Joined",
+                    Description = $"{character.Name} (Level {character.Level} {character.Class}) joined the campaign",
+                    UserName = "Player",
+                    Timestamp = character.CreatedAt,
+                    Icon = "fas fa-user-plus",
+                    Color = "text-primary"
+                });
+            }
+
+            // Sort by timestamp descending (most recent first)
+            _recentActivity = _recentActivity.OrderByDescending(a => a.Timestamp).Take(10).ToList();
+        }
+        catch (Exception)
+        {
+            _recentActivity = new List<ActivityItem>();
+        }
+    }
+
+    public class VariantRuleInfo
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public bool IsEnabled { get; set; }
+        public string Icon { get; set; } = "fas fa-magic";
+    }
+
+    private void LoadVariantRules()
+    {
+        _variantRules.Clear();
+
+        // For now, create static variant rules. In a real implementation, 
+        // you would parse the VariantRulesJson from the campaign
+        var availableRules = new List<VariantRuleInfo>
+        {
+            new VariantRuleInfo 
+            { 
+                Name = "Free Archetype", 
+                Description = "Characters gain archetype feats automatically", 
+                IsEnabled = false, 
+                Icon = "fas fa-certificate" 
+            },
+            new VariantRuleInfo 
+            { 
+                Name = "Dual Class", 
+                Description = "Characters can multiclass more effectively", 
+                IsEnabled = false, 
+                Icon = "fas fa-layer-group" 
+            },
+            new VariantRuleInfo 
+            { 
+                Name = "Automatic Bonus Progression", 
+                Description = "Characters get bonuses without magic items", 
+                IsEnabled = false, 
+                Icon = "fas fa-chart-line" 
+            },
+            new VariantRuleInfo 
+            { 
+                Name = "Proficiency Without Level", 
+                Description = "Level doesn't add to proficiency bonuses", 
+                IsEnabled = false, 
+                Icon = "fas fa-equals" 
+            }
+        };
+
+        _variantRules = availableRules;
+    }
+
+    public class CombatParticipantRequest
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Type { get; set; } = string.Empty;
+        public int Initiative { get; set; }
+        public int HitPoints { get; set; }
+        public int ArmorClass { get; set; }
+        public bool IsPlayerCharacter { get; set; }
     }
 }

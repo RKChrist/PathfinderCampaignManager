@@ -1,5 +1,6 @@
 @using PathfinderCampaignManager.Application.CharacterCreation.Models
 @using PathfinderCampaignManager.Domain.Enums
+@using PathfinderCampaignManager.Domain.Entities.Pathfinder
 
 <div class="pf2e-skill-component athletics-skill">
     <div class="skill-header">
@@ -15,11 +16,11 @@
         </div>
         <div class="skill-proficiency">
             <select class="proficiency-selector" @bind="SelectedProficiency" @bind:after="UpdateProficiency">
-                <option value="@ProficiencyLevel.Untrained">Untrained</option>
-                <option value="@ProficiencyLevel.Trained">Trained</option>
-                <option value="@ProficiencyLevel.Expert">Expert</option>
-                <option value="@ProficiencyLevel.Master">Master</option>
-                <option value="@ProficiencyLevel.Legendary">Legendary</option>
+                <option value="@ProficiencyRank.Untrained">Untrained</option>
+                <option value="@ProficiencyRank.Trained">Trained</option>
+                <option value="@ProficiencyRank.Expert">Expert</option>
+                <option value="@ProficiencyRank.Master">Master</option>
+                <option value="@ProficiencyRank.Legendary">Legendary</option>
             </select>
         </div>
     </div>
@@ -231,10 +232,10 @@
 @code {
     [Parameter] public bool ShowDetails { get; set; }
     [Parameter] public CharacterBuilder? Character { get; set; }
-    [Parameter] public ProficiencyLevel InitialProficiency { get; set; } = ProficiencyLevel.Untrained;
-    [Parameter] public EventCallback<ProficiencyLevel> OnProficiencyChanged { get; set; }
+    [Parameter] public ProficiencyRank InitialProficiency { get; set; } = ProficiencyRank.Untrained;
+    [Parameter] public EventCallback<ProficiencyRank> OnProficiencyChanged { get; set; }
 
-    private ProficiencyLevel SelectedProficiency { get; set; } = ProficiencyLevel.Untrained;
+    private ProficiencyRank SelectedProficiency { get; set; } = ProficiencyRank.Untrained;
     private SkillRollResult? LastRollResult { get; set; }
 
     protected override void OnInitialized()
@@ -258,7 +259,7 @@
         var proficiencyBonus = GetProficiencyBonus(SelectedProficiency);
         var level = Character?.Level ?? 1;
         
-        return abilityModifier + proficiencyBonus + (SelectedProficiency != ProficiencyLevel.Untrained ? level : 0);
+        return abilityModifier + proficiencyBonus + (SelectedProficiency != ProficiencyRank.Untrained ? level : 0);
     }
 
     private string GetBonusBreakdown()
@@ -266,7 +267,7 @@
         var abilityMod = GetAbilityModifier(AbilityScore.Strength);
         var profBonus = GetProficiencyBonus(SelectedProficiency);
         var level = Character?.Level ?? 1;
-        var levelBonus = SelectedProficiency != ProficiencyLevel.Untrained ? level : 0;
+        var levelBonus = SelectedProficiency != ProficiencyRank.Untrained ? level : 0;
 
         var parts = new List<string>();
         if (abilityMod != 0) parts.Add($"{abilityMod:+0;-0} Str");
@@ -286,13 +287,13 @@
         return 0; // Default for testing
     }
 
-    private int GetProficiencyBonus(ProficiencyLevel proficiency) => proficiency switch
+    private int GetProficiencyBonus(ProficiencyRank proficiency) => proficiency switch
     {
-        ProficiencyLevel.Untrained => 0,
-        ProficiencyLevel.Trained => 2,
-        ProficiencyLevel.Expert => 4,
-        ProficiencyLevel.Master => 6,
-        ProficiencyLevel.Legendary => 8,
+        ProficiencyRank.Untrained => 0,
+        ProficiencyRank.Trained => 2,
+        ProficiencyRank.Expert => 4,
+        ProficiencyRank.Master => 6,
+        ProficiencyRank.Legendary => 8,
         _ => 0
     };
 

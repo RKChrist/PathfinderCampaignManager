@@ -97,9 +97,11 @@ public class PfStrike
     public string DamageFormula { get; set; } = string.Empty;
     public string DamageType { get; set; } = string.Empty;
     public List<PfStrikeDamage> AdditionalDamage { get; set; } = new();
+    public List<string> AdditionalEffects { get; set; } = new();
     public string Range { get; set; } = "melee"; // "melee", "ranged", or specific range
     public int? RangeIncrement { get; set; }
     public int? MaxRange { get; set; }
+    public int? Reach { get; set; }
     public List<string> Effects { get; set; } = new();
     public string Notes { get; set; } = string.Empty;
 }
@@ -117,6 +119,7 @@ public class PfMonsterAction
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public ActionType ActionType { get; set; } = ActionType.Single;
+    public string? ActionCost { get; set; }
     public List<string> Traits { get; set; } = new();
     public string? Frequency { get; set; }
     public string? Trigger { get; set; }
@@ -151,6 +154,7 @@ public enum ActionType
     Single,
     Double,
     Triple,
+    Action,
     Variable,
     Passive
 }

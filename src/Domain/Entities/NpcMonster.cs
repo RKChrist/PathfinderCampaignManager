@@ -7,7 +7,7 @@ public class NpcMonster : BaseEntity
     public Guid? OwnerUserId { get; private set; } // Null for library NPCs/Monsters
     public Guid? SessionId { get; private set; }   // Null for personal library
     public string Name { get; private set; } = string.Empty;
-    public NpcMonsterType Type { get; private set; } = NpcMonsterType.NPC;
+    public NpcMonsterType Type { get; private set; } = NpcMonsterType.Humanoid;
     public int Level { get; private set; } = 1;
     public string Size { get; private set; } = "Medium";
     public string CreatureType { get; private set; } = "Humanoid";

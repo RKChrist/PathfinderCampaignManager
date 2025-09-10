@@ -6,9 +6,15 @@ window.getWindowSize = () => {
 };
 
 window.getMousePosition = (event) => {
+    if (event) {
+        return {
+            X: event.clientX,
+            Y: event.clientY
+        };
+    }
     return {
-        x: event.clientX,
-        y: event.clientY
+        X: window.lastMouseX || 0,
+        Y: window.lastMouseY || 0
     };
 };
 
@@ -71,3 +77,9 @@ window.debounce = (func, wait) => {
         timeout = setTimeout(later, wait);
     };
 };
+
+// Track mouse position globally for tooltip positioning
+document.addEventListener('mousemove', function(e) {
+    window.lastMouseX = e.clientX;
+    window.lastMouseY = e.clientY;
+});

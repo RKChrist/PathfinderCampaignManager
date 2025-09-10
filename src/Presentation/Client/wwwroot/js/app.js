@@ -156,6 +156,13 @@ window.scrollToElement = (selector) => {
     }
 };
 
+// Chat utilities
+window.scrollToBottom = (element) => {
+    if (element) {
+        element.scrollTop = element.scrollHeight;
+    }
+};
+
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
     // Add any initialization code here

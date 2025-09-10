@@ -191,11 +191,11 @@
             string endpoint;
             if (SessionId.HasValue)
             {
-                endpoint = $"api/npcmonster/session/{SessionId}";
+                endpoint = $"api/npcmonster?sessionId={SessionId}";
             }
             else
             {
-                endpoint = "api/npcmonster/library";
+                endpoint = "api/npcmonster";
             }
 
             npcMonsters = await Http.GetFromJsonAsync<IEnumerable<NpcMonsterResponse>>(endpoint);

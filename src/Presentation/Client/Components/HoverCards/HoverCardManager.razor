@@ -46,45 +46,67 @@
 
     private async Task HandleShowSpellCard(string spellId, double x, double y, ICalculatedCharacter? character = null)
     {
-        // Hide any existing cards
+        // Cancel any pending hide operations
+        _hideTimer?.Dispose();
+        _hideTimer = null;
+        
+        // Hide any existing cards first
         await HandleHideAllCards();
         
-        // Load spell data
-        var result = await DataRepository.GetSpellAsync(spellId);
-        if (result.IsSuccess)
+        try
         {
-            _currentSpell = result.Value;
-            _currentCharacter = character;
-            _spellCardVisible = true;
-            
-            if (_spellHoverCard != null)
+            // Load spell data
+            var result = await DataRepository.GetSpellAsync(spellId);
+            if (result.IsSuccess)
             {
-                await _spellHoverCard.ShowAtPositionAsync(x, y);
+                _currentSpell = result.Value;
+                _currentCharacter = character;
+                _spellCardVisible = true;
+                
+                StateHasChanged(); // Update state before positioning
+                
+                if (_spellHoverCard != null)
+                {
+                    await _spellHoverCard.ShowAtPositionAsync(x, y);
+                }
             }
-            
-            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error showing spell card: {ex.Message}");
         }
     }
 
     private async Task HandleShowFeatCard(string featId, double x, double y, ICalculatedCharacter? character = null)
     {
-        // Hide any existing cards
+        // Cancel any pending hide operations
+        _hideTimer?.Dispose();
+        _hideTimer = null;
+        
+        // Hide any existing cards first
         await HandleHideAllCards();
         
-        // Load feat data
-        var result = await DataRepository.GetFeatAsync(featId);
-        if (result.IsSuccess)
+        try
         {
-            _currentFeat = result.Value;
-            _currentCharacter = character;
-            _featCardVisible = true;
-            
-            if (_featHoverCard != null)
+            // Load feat data
+            var result = await DataRepository.GetFeatAsync(featId);
+            if (result.IsSuccess)
             {
-                await _featHoverCard.ShowAtPositionAsync(x, y);
+                _currentFeat = result.Value;
+                _currentCharacter = character;
+                _featCardVisible = true;
+                
+                StateHasChanged(); // Update state before positioning
+                
+                if (_featHoverCard != null)
+                {
+                    await _featHoverCard.ShowAtPositionAsync(x, y);
+                }
             }
-            
-            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error showing feat card: {ex.Message}");
         }
     }
 

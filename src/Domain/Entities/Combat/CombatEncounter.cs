@@ -1,5 +1,18 @@
 namespace PathfinderCampaignManager.Domain.Entities.Combat;
 
+// CombatSession is a simplified version of CombatEncounter for campaign-specific combat
+public class CombatSession
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CampaignId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public bool IsActive { get; set; }
+    public bool IsPaused { get; set; } = false;
+    public int Round { get; set; } = 0;
+    public int CurrentTurn { get; set; } = 0;
+    public List<CombatParticipant> Participants { get; set; } = new();
+}
+
 public class CombatEncounter
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -23,7 +36,7 @@ public class CombatParticipant
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = string.Empty;
     public CombatParticipantType Type { get; set; }
-    public bool IsPlayerCharacter => Type == CombatParticipantType.PlayerCharacter;
+    public bool IsPlayerCharacter { get; set; }
     
     // Core Stats
     public int Initiative { get; set; }
@@ -35,11 +48,15 @@ public class CombatParticipant
     
     // Passive Scores
     public int PassivePerception { get; set; }
+    public int Perception { get; set; }
     
     // Saving Throws
     public int FortitudeSave { get; set; }
     public int ReflexSave { get; set; }
     public int WillSave { get; set; }
+    public int Fortitude { get; set; }
+    public int Reflex { get; set; }
+    public int Will { get; set; }
     
     // Combat State
     public bool IsDefeated => CurrentHitPoints <= 0;
@@ -54,8 +71,11 @@ public class CombatParticipant
     
     // For NPCs/Monsters
     public Guid? CharacterId { get; set; } // Link to player character if applicable
+    public Guid? PlayerId { get; set; } // Link to the player who owns this character
     public string CreatureType { get; set; } = string.Empty;
     public int Level { get; set; } = 1;
+    public string? Class { get; set; }
+    public string? Ancestry { get; set; }
 }
 
 public enum CombatParticipantType

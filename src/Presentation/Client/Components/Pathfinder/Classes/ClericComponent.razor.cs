@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components;
 using PathfinderCampaignManager.Application.CharacterCreation.Models;
 using PathfinderCampaignManager.Domain.Enums;
+using PathfinderCampaignManager.Domain.Entities.Pathfinder;
 
 namespace PathfinderCampaignManager.Presentation.Client.Components.Pathfinder.Classes;
 
@@ -44,30 +45,30 @@ public partial class ClericComponent : ComponentBase
             SpellcastingAbility = "Wisdom",
             InitialProficiencies = new ClassProficiencies
             {
-                Perception = ProficiencyLevel.Trained,
-                FortitudeSave = ProficiencyLevel.Expert,
-                ReflexSave = ProficiencyLevel.Trained,
-                WillSave = ProficiencyLevel.Expert,
-                Skills = new Dictionary<string, ProficiencyLevel>
+                Perception = ProficiencyRank.Trained,
+                FortitudeSave = ProficiencyRank.Expert,
+                ReflexSave = ProficiencyRank.Trained,
+                WillSave = ProficiencyRank.Expert,
+                Skills = new Dictionary<string, ProficiencyRank>
                 {
-                    ["Religion"] = ProficiencyLevel.Trained,
-                    ["Medicine"] = ProficiencyLevel.Untrained
+                    ["Religion"] = ProficiencyRank.Trained,
+                    ["Medicine"] = ProficiencyRank.Untrained
                 },
-                Weapons = new Dictionary<string, ProficiencyLevel>
+                Weapons = new Dictionary<string, ProficiencyRank>
                 {
-                    ["Simple"] = ProficiencyLevel.Trained,
-                    ["Martial"] = ProficiencyLevel.Untrained,
-                    ["Advanced"] = ProficiencyLevel.Untrained
+                    ["Simple"] = ProficiencyRank.Trained,
+                    ["Martial"] = ProficiencyRank.Untrained,
+                    ["Advanced"] = ProficiencyRank.Untrained
                 },
-                Armor = new Dictionary<string, ProficiencyLevel>
+                Armor = new Dictionary<string, ProficiencyRank>
                 {
-                    ["Unarmored"] = ProficiencyLevel.Trained,
-                    ["Light"] = ProficiencyLevel.Trained,
-                    ["Medium"] = ProficiencyLevel.Trained,
-                    ["Heavy"] = ProficiencyLevel.Untrained
+                    ["Unarmored"] = ProficiencyRank.Trained,
+                    ["Light"] = ProficiencyRank.Trained,
+                    ["Medium"] = ProficiencyRank.Trained,
+                    ["Heavy"] = ProficiencyRank.Untrained
                 },
-                SpellAttacks = ProficiencyLevel.Trained,
-                SpellDCs = ProficiencyLevel.Expert
+                SpellAttacks = ProficiencyRank.Trained,
+                SpellDCs = ProficiencyRank.Expert
             },
             ClassFeatures = new List<string>
             {

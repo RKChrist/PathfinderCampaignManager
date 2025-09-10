@@ -1,4 +1,5 @@
 using PathfinderCampaignManager.Domain.Enums;
+using PathfinderCampaignManager.Domain.Entities.Pathfinder;
 
 namespace PathfinderCampaignManager.Application.CharacterCreation.Models;
 
@@ -287,16 +288,16 @@ public class SkillAction
 
 public class ClassProficiencies
 {
-    public ProficiencyLevel Perception { get; set; } = ProficiencyLevel.Untrained;
-    public ProficiencyLevel FortitudeSave { get; set; } = ProficiencyLevel.Untrained;
-    public ProficiencyLevel ReflexSave { get; set; } = ProficiencyLevel.Untrained;
-    public ProficiencyLevel WillSave { get; set; } = ProficiencyLevel.Untrained;
-    public Dictionary<string, ProficiencyLevel> Skills { get; set; } = new();
-    public Dictionary<string, ProficiencyLevel> Weapons { get; set; } = new();
-    public Dictionary<string, ProficiencyLevel> Armor { get; set; } = new();
-    public ProficiencyLevel SpellAttacks { get; set; } = ProficiencyLevel.Untrained;
-    public ProficiencyLevel SpellDCs { get; set; } = ProficiencyLevel.Untrained;
-    public Dictionary<string, ProficiencyLevel> ClassDCs { get; set; } = new();
+    public ProficiencyRank Perception { get; set; } = ProficiencyRank.Untrained;
+    public ProficiencyRank FortitudeSave { get; set; } = ProficiencyRank.Untrained;
+    public ProficiencyRank ReflexSave { get; set; } = ProficiencyRank.Untrained;
+    public ProficiencyRank WillSave { get; set; } = ProficiencyRank.Untrained;
+    public Dictionary<string, ProficiencyRank> Skills { get; set; } = new();
+    public Dictionary<string, ProficiencyRank> Weapons { get; set; } = new();
+    public Dictionary<string, ProficiencyRank> Armor { get; set; } = new();
+    public ProficiencyRank SpellAttacks { get; set; } = ProficiencyRank.Untrained;
+    public ProficiencyRank SpellDCs { get; set; } = ProficiencyRank.Untrained;
+    public Dictionary<string, ProficiencyRank> ClassDCs { get; set; } = new();
 }
 
 public class AbilityBoost

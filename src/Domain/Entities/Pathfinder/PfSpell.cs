@@ -32,6 +32,7 @@ public class PfSpell : BaseEntity
     // Effects and mechanics
     public List<PfSpellDamage> Damage { get; set; } = new();
     public List<PfSpellHealing> Healing { get; set; } = new();
+    public List<PfSpellEffect> Effects { get; set; } = new();
     public int? TempHp { get; set; }
     public List<string> ConditionsApplied { get; set; } = new();
     public List<string> Afflictions { get; set; } = new();
@@ -62,6 +63,7 @@ public class PfSpellDamage
     public string DamageType { get; set; } = string.Empty; // "fire", "cold", "piercing", etc.
     public string? Condition { get; set; } // When this damage applies
     public bool IsPersistent { get; set; }
+    public bool AddCasterModifier { get; set; }
 }
 
 public class PfSpellHealing
@@ -77,8 +79,21 @@ public class PfSpellHeightening
     public string Effect { get; set; } = string.Empty;
     public List<PfSpellDamage>? AdditionalDamage { get; set; }
     public List<PfSpellHealing>? AdditionalHealing { get; set; }
+    public List<PfSpellEffect>? AdditionalEffects { get; set; }
     public string? AdditionalTargets { get; set; }
     public string? AdditionalArea { get; set; }
     public string? AdditionalRange { get; set; }
     public Dictionary<string, object>? AdditionalValues { get; set; } // For any other spell parameter modifications
+}
+
+public class PfSpellEffect
+{
+    public string Type { get; set; } = string.Empty; // "Modify", "Grant", "Apply", etc.
+    public string Target { get; set; } = string.Empty; // "AC", "Attack", "Damage", etc.
+    public string Value { get; set; } = string.Empty; // "+1", "advantage", etc.
+    public string? BonusType { get; set; } // "item", "circumstance", "status", etc.
+    public string? Duration { get; set; } // "until_end_of_turn", "daily_preparations", etc.
+    public string? Condition { get; set; } // When this effect applies
+    public string? Area { get; set; } // Area of effect if applicable
+    public Dictionary<string, object>? Parameters { get; set; } // Additional parameters
 }

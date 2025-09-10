@@ -96,17 +96,23 @@
                                     Create Character
                                 </a>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <a href="/campaigns/@CampaignId/monsters/create" class="btn btn-outline-danger w-100">
                                     <i class="fas fa-dragon mb-2 d-block"></i>
                                     Add Monster
                                 </a>
                             </div>
-                            <div class="col-md-3">
-                                <a href="/combat-signalr?campaignId=@CampaignId" class="btn btn-outline-warning w-100">
-                                    <i class="fas fa-swords mb-2 d-block"></i>
-                                    Combat Tracker
+                            <div class="col-md-2">
+                                <a href="/sessions/@CampaignId/npc-monsters" class="btn btn-outline-secondary w-100">
+                                    <i class="fas fa-list mb-2 d-block"></i>
+                                    View Monsters
                                 </a>
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-outline-warning w-100" @onclick="OpenCombatSetup">
+                                    <i class="fas fa-swords mb-2 d-block"></i>
+                                    Add to Combat
+                                </button>
                             </div>
                             <div class="col-md-3">
                                 <a href="/rules" class="btn btn-outline-info w-100">
@@ -187,11 +193,36 @@
                         </h5>
                     </div>
                     <div class="card-body">
-                        <div class="text-center py-4 text-muted">
-                            <i class="fas fa-calendar-times fa-3x mb-3"></i>
-                            <p>No recent activity</p>
-                            <small>Activity will appear here as players interact with the campaign</small>
-                        </div>
+                        @if (_recentActivity.Any())
+                        {
+                            <div class="activity-list">
+                                @foreach (var activity in _recentActivity)
+                                {
+                                    <div class="activity-item d-flex align-items-start py-2 border-bottom">
+                                        <div class="activity-icon me-3 mt-1">
+                                            <i class="@activity.Icon @activity.Color"></i>
+                                        </div>
+                                        <div class="activity-content flex-grow-1">
+                                            <div class="activity-description">@activity.Description</div>
+                                            <div class="activity-meta text-muted small">
+                                                <span class="activity-user">@activity.UserName</span> •
+                                                <span class="activity-time" title="@activity.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")">
+                                                    @GetTimeAgo(activity.Timestamp)
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center py-4 text-muted">
+                                <i class="fas fa-calendar-times fa-3x mb-3"></i>
+                                <p>No recent activity</p>
+                                <small>Activity will appear here as players interact with the campaign</small>
+                            </div>
+                        }
                     </div>
                 </div>
             </div>
@@ -334,10 +365,38 @@
                         </h5>
                     </div>
                     <div class="card-body">
-                        <div class="text-center py-3 text-muted">
-                            <i class="fas fa-scroll fa-2x mb-2"></i>
-                            <p class="mb-0">Using standard Pathfinder 2e rules</p>
-                        </div>
+                        @if (_variantRules.Any(r => r.IsEnabled))
+                        {
+                            <div class="variant-rules-list">
+                                @foreach (var rule in _variantRules.Where(r => r.IsEnabled))
+                                {
+                                    <div class="variant-rule-item d-flex align-items-start py-2 border-bottom">
+                                        <div class="variant-rule-icon me-3 mt-1">
+                                            <i class="@rule.Icon text-primary"></i>
+                                        </div>
+                                        <div class="variant-rule-content">
+                                            <div class="variant-rule-name fw-bold">@rule.Name</div>
+                                            <div class="variant-rule-description text-muted small">@rule.Description</div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center py-3 text-muted">
+                                <i class="fas fa-scroll fa-2x mb-2"></i>
+                                <p class="mb-0">Using standard Pathfinder 2e rules</p>
+                                @if (_isDM)
+                                {
+                                    <small>
+                                        <a href="/campaigns/@CampaignId/manage" class="text-decoration-none">
+                                            Configure variant rules
+                                        </a>
+                                    </small>
+                                }
+                            </div>
+                        }
                     </div>
                 </div>
             </div>
@@ -351,6 +410,84 @@
     <CampaignStatusPanel CampaignId="@CampaignId.ToString()"
                          UserId="@_currentUser.Id.ToString()" 
                          UserName="@_currentUser.DisplayName" />
+}
+
+<!-- Combat Setup Modal -->
+@if (_showCombatSetupModal)
+{
+    <div class="modal fade show" style="display: block;" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-swords me-2"></i>
+                        Add Participants to Combat
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseCombatSetup"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="mb-3">Available Characters</h6>
+                            <div class="list-group mb-3">
+                                @foreach (var character in _availableCharacters)
+                                {
+                                    <label class="list-group-item d-flex align-items-center">
+                                        <input type="checkbox" class="form-check-input me-3" 
+                                               @onchange="@(e => ToggleCharacterSelection(character.Id, e))" 
+                                               checked="@_selectedCharacters.Contains(character.Id)">
+                                        <div>
+                                            <div class="fw-bold">@character.Name</div>
+                                            <small class="text-muted">@character.Class (Level @character.Level)</small>
+                                        </div>
+                                    </label>
+                                }
+                                @if (!_availableCharacters.Any())
+                                {
+                                    <div class="text-muted text-center py-3">
+                                        <i class="fas fa-user-slash mb-2"></i><br>
+                                        No characters found in this campaign's sessions.
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="mb-3">Available Monsters</h6>
+                            <div class="list-group">
+                                @foreach (var monster in _availableMonsters)
+                                {
+                                    <label class="list-group-item d-flex align-items-center">
+                                        <input type="checkbox" class="form-check-input me-3" 
+                                               @onchange="@(e => ToggleMonsterSelection(monster.Id, e))" 
+                                               checked="@_selectedMonsters.Contains(monster.Id)">
+                                        <div>
+                                            <div class="fw-bold">@monster.Name</div>
+                                            <small class="text-muted">@monster.Type (Level @monster.Level)</small>
+                                        </div>
+                                    </label>
+                                }
+                                @if (!_availableMonsters.Any())
+                                {
+                                    <div class="text-muted text-center py-3">
+                                        <i class="fas fa-dragon mb-2"></i><br>
+                                        No monsters found. <a href="/campaigns/@CampaignId/monsters/create">Create some monsters</a> first.
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseCombatSetup">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="StartSelectedCombat" 
+                            disabled="@(!_selectedCharacters.Any() && !_selectedMonsters.Any())">
+                        <i class="fas fa-plus me-2"></i>Add to Combat
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
 }
 
 </AuthGuard>
@@ -380,6 +517,59 @@
         border: none;
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         transition: transform 0.2s;
+    }
+
+    .activity-item {
+        transition: background-color 0.2s;
+    }
+
+    .activity-item:hover {
+        background-color: rgba(0, 0, 0, 0.02);
+    }
+
+    .activity-item:last-child {
+        border-bottom: none !important;
+    }
+
+    .activity-icon {
+        width: 20px;
+        text-align: center;
+    }
+
+    .activity-description {
+        font-size: 0.9rem;
+        line-height: 1.3;
+    }
+
+    .activity-meta {
+        font-size: 0.75rem;
+        margin-top: 0.25rem;
+    }
+
+    .variant-rule-item {
+        transition: background-color 0.2s;
+    }
+
+    .variant-rule-item:hover {
+        background-color: rgba(0, 0, 0, 0.02);
+    }
+
+    .variant-rule-item:last-child {
+        border-bottom: none !important;
+    }
+
+    .variant-rule-icon {
+        width: 20px;
+        text-align: center;
+    }
+
+    .variant-rule-name {
+        font-size: 0.9rem;
+    }
+
+    .variant-rule-description {
+        font-size: 0.75rem;
+        line-height: 1.3;
     }
 </style>
 

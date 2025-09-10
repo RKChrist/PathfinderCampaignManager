@@ -77,14 +77,16 @@
                         <div class="row">
                             <div class="col-md-4">
                                 <div class="mb-3">
-                                    <label for="ac" class="form-label">Armor Class</label>
-                                    <InputNumber id="ac" @bind-Value="model.ArmorClass" class="form-control" min="1" />
+                                    <label for="ac" class="form-label">Armor Class *</label>
+                                    <InputNumber id="ac" @bind-Value="model.ArmorClass" class="form-control" min="10" max="50" />
+                                    <ValidationMessage For="@(() => model.ArmorClass)" class="text-danger" />
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="mb-3">
-                                    <label for="hp" class="form-label">Hit Points</label>
-                                    <InputNumber id="hp" @bind-Value="model.HitPoints" class="form-control" min="1" />
+                                    <label for="hp" class="form-label">Hit Points *</label>
+                                    <InputNumber id="hp" @bind-Value="model.HitPoints" class="form-control" min="1" max="1000" />
+                                    <ValidationMessage For="@(() => model.HitPoints)" class="text-danger" />
                                 </div>
                             </div>
                             <div class="col-md-4">
@@ -155,13 +157,20 @@
 
         try
         {
-            var request = new CreateNpcMonsterRequest(
-                model.Name!,
-                model.Type,
-                model.Level,
-                null, // OwnerUserId - would get from auth context in real app
-                model.SessionId
-            );
+            var request = new CreateNpcMonsterRequest
+            {
+                Name = model.Name!,
+                Type = model.Type.ToString() ?? "Humanoid",
+                Level = model.Level,
+                Description = model.Description,
+                ArmorClass = model.ArmorClass,
+                HitPoints = model.HitPoints,
+                Speed = model.Speed.HasValue ? $"{model.Speed} feet" : "30 feet",
+                SessionId = model.SessionId,
+                IsTemplate = model.IsTemplate
+            };
+
+            Console.WriteLine($"Sending monster request: Name='{request.Name}', Type='{request.Type}', Level={request.Level}, AC={request.ArmorClass}, HP={request.HitPoints}, Speed='{request.Speed}'");
 
             var response = await Http.PostAsJsonAsync("api/npcmonster", request);
 
@@ -205,7 +214,7 @@
         public string? Name { get; set; }
 
         [Required(ErrorMessage = "Type is required")]
-        public NpcMonsterType Type { get; set; }
+        public NpcMonsterType Type { get; set; } = NpcMonsterType.Humanoid;
 
         [Required(ErrorMessage = "Level is required")]
         [Range(1, 30, ErrorMessage = "Level must be between 1 and 30")]
@@ -214,11 +223,13 @@
         [StringLength(1000, ErrorMessage = "Description cannot exceed 1000 characters")]
         public string? Description { get; set; }
 
-        [Range(1, 50, ErrorMessage = "Armor Class must be between 1 and 50")]
-        public int? ArmorClass { get; set; }
+        [Required(ErrorMessage = "Armor Class is required")]
+        [Range(10, 50, ErrorMessage = "Armor Class must be between 10 and 50")]
+        public int ArmorClass { get; set; } = 10;
 
-        [Range(1, 10000, ErrorMessage = "Hit Points must be between 1 and 10000")]
-        public int? HitPoints { get; set; }
+        [Required(ErrorMessage = "Hit Points are required")]
+        [Range(1, 1000, ErrorMessage = "Hit Points must be between 1 and 1000")]
+        public int HitPoints { get; set; } = 1;
 
         [Range(0, 1000, ErrorMessage = "Speed must be between 0 and 1000")]
         public int? Speed { get; set; }
@@ -228,11 +239,16 @@
         public Guid? SessionId { get; set; }
     }
 
-    public record CreateNpcMonsterRequest(
-        string Name,
-        NpcMonsterType Type,
-        int Level,
-        Guid? OwnerUserId = null,
-        Guid? SessionId = null
-    );
+    public class CreateNpcMonsterRequest
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Type { get; set; } = string.Empty;
+        public int Level { get; set; }
+        public string? Description { get; set; }
+        public int ArmorClass { get; set; }
+        public int HitPoints { get; set; }
+        public string? Speed { get; set; }
+        public Guid? SessionId { get; set; }
+        public bool IsTemplate { get; set; }
+    }
 }

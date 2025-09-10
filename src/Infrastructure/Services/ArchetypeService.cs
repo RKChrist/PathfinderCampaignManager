@@ -411,11 +411,11 @@ public class ArchetypeService : IArchetypeService
 
         var requiredRank = prerequisite.Value switch
         {
-            "Trained" => ProficiencyLevel.Trained,
-            "Expert" => ProficiencyLevel.Expert,
-            "Master" => ProficiencyLevel.Master,
-            "Legendary" => ProficiencyLevel.Legendary,
-            _ => ProficiencyLevel.Untrained
+            "Trained" => ProficiencyRank.Trained,
+            "Expert" => ProficiencyRank.Expert,
+            "Master" => ProficiencyRank.Master,
+            "Legendary" => ProficiencyRank.Legendary,
+            _ => ProficiencyRank.Untrained
         };
 
         return proficiency >= requiredRank;

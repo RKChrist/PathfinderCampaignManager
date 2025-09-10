@@ -437,11 +437,11 @@ public class ValidationService : IValidationService
         }
     }
 
-    private async Task ValidateProficiencies(Dictionary<string, ProficiencyLevel> proficiencies, int level, ValidationReport report)
+    private async Task ValidateProficiencies(Dictionary<string, ProficiencyRank> proficiencies, int level, ValidationReport report)
     {
         foreach (var prof in proficiencies)
         {
-            if (prof.Value > ProficiencyLevel.Legendary)
+            if (prof.Value > ProficiencyRank.Legendary)
             {
                 report.AddIssue(ValidationSeverity.Error, "Proficiencies", 
                     $"{prof.Key} proficiency level is invalid");
@@ -557,11 +557,11 @@ public class ValidationService : IValidationService
 
         var requiredRank = prerequisite.Value switch
         {
-            "Trained" => ProficiencyLevel.Trained,
-            "Expert" => ProficiencyLevel.Expert,
-            "Master" => ProficiencyLevel.Master,
-            "Legendary" => ProficiencyLevel.Legendary,
-            _ => ProficiencyLevel.Untrained
+            "Trained" => ProficiencyRank.Trained,
+            "Expert" => ProficiencyRank.Expert,
+            "Master" => ProficiencyRank.Master,
+            "Legendary" => ProficiencyRank.Legendary,
+            _ => ProficiencyRank.Untrained
         };
 
         return proficiency >= requiredRank;
@@ -592,15 +592,15 @@ public class ValidationService : IValidationService
         };
     }
 
-    private ProficiencyLevel GetMaxProficiencyForLevel(int level)
+    private ProficiencyRank GetMaxProficiencyForLevel(int level)
     {
         return level switch
         {
-            >= 15 => ProficiencyLevel.Legendary,
-            >= 7 => ProficiencyLevel.Master,
-            >= 3 => ProficiencyLevel.Expert,
-            >= 1 => ProficiencyLevel.Trained,
-            _ => ProficiencyLevel.Untrained
+            >= 15 => ProficiencyRank.Legendary,
+            >= 7 => ProficiencyRank.Master,
+            >= 3 => ProficiencyRank.Expert,
+            >= 1 => ProficiencyRank.Trained,
+            _ => ProficiencyRank.Untrained
         };
     }
 }

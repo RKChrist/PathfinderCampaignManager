@@ -105,6 +105,22 @@ public class CombatSignalRService : IAsyncDisposable
         }
     }
 
+    public async Task UpdateArmorClassAsync(string combatId, string participantId, int armorClass)
+    {
+        if (_hubConnection?.State == HubConnectionState.Connected)
+        {
+            await _hubConnection.InvokeAsync("UpdateArmorClass", combatId, participantId, armorClass);
+        }
+    }
+
+    public async Task UpdateSaveAsync(string combatId, string participantId, string saveType, int value)
+    {
+        if (_hubConnection?.State == HubConnectionState.Connected)
+        {
+            await _hubConnection.InvokeAsync("UpdateSave", combatId, participantId, saveType, value);
+        }
+    }
+
     public async Task AddParticipantAsync(string combatId, CombatParticipant participant)
     {
         if (_hubConnection?.State == HubConnectionState.Connected)
@@ -236,9 +252,13 @@ public class CombatSignalRService : IAsyncDisposable
 
     // Event subscriptions
     public event Action<CombatSession>? OnCombatStateUpdated;
+    public event Action<CombatSession>? OnCombatUpdated;
     public event Action<string, int>? OnInitiativeUpdated;
     public event Action<string, int, int>? OnHitPointsUpdated;
+    public event Action<string, int>? OnArmorClassUpdated;
+    public event Action<string, string, int>? OnSaveUpdated;
     public event Action<CombatParticipant>? OnParticipantAdded;
+    public event Action<CombatParticipant>? OnParticipantUpdated;
     public event Action<string>? OnParticipantRemoved;
     public event Action<CombatSession>? OnCombatStarted;
     public event Action<CombatSession>? OnCombatEnded;
@@ -266,6 +286,11 @@ public class CombatSignalRService : IAsyncDisposable
             OnCombatStateUpdated?.Invoke(session);
         });
 
+        _hubConnection.On<CombatSession>("CombatUpdated", (session) =>
+        {
+            OnCombatUpdated?.Invoke(session);
+        });
+
         _hubConnection.On<string, int>("InitiativeUpdated", (participantId, initiative) =>
         {
             OnInitiativeUpdated?.Invoke(participantId, initiative);
@@ -276,14 +301,37 @@ public class CombatSignalRService : IAsyncDisposable
             OnHitPointsUpdated?.Invoke(participantId, currentHp, maxHp);
         });
 
+        _hubConnection.On<string, int>("ArmorClassUpdated", (participantId, armorClass) =>
+        {
+            OnArmorClassUpdated?.Invoke(participantId, armorClass);
+        });
+
+        _hubConnection.On<string, string, int>("SaveUpdated", (participantId, saveType, value) =>
+        {
+            OnSaveUpdated?.Invoke(participantId, saveType, value);
+        });
+
         _hubConnection.On<CombatParticipant>("ParticipantAdded", (participant) =>
         {
             OnParticipantAdded?.Invoke(participant);
         });
 
+        _hubConnection.On<CombatParticipant>("ParticipantUpdated", (participant) =>
+        {
+            OnParticipantUpdated?.Invoke(participant);
+        });
+
         _hubConnection.On<string>("ParticipantRemoved", (participantId) =>
         {
             OnParticipantRemoved?.Invoke(participantId);
+        });
+
+        _hubConnection.On<List<PathfinderCampaignManager.Presentation.Shared.Models.CombatParticipant>>("ParticipantsAdded", (participants) =>
+        {
+            foreach (var participant in participants)
+            {
+                OnParticipantAdded?.Invoke(participant);
+            }
         });
 
         _hubConnection.On<CombatSession>("CombatStarted", (session) =>
@@ -371,9 +419,13 @@ public class CombatSignalRService : IAsyncDisposable
     public void UnsubscribeFromEvents()
     {
         OnCombatStateUpdated = null;
+        OnCombatUpdated = null;
         OnInitiativeUpdated = null;
         OnHitPointsUpdated = null;
+        OnArmorClassUpdated = null;
+        OnSaveUpdated = null;
         OnParticipantAdded = null;
+        OnParticipantUpdated = null;
         OnParticipantRemoved = null;
         OnCombatStarted = null;
         OnCombatEnded = null;

@@ -5,6 +5,7 @@ using PathfinderCampaignManager.Infrastructure.Services;
 using PathfinderCampaignManager.Domain.Interfaces;
 using PathfinderCampaignManager.Domain.Entities.Pathfinder;
 using PathfinderCampaignManager.Domain.Common;
+using PathfinderCampaignManager.Domain.Errors;
 
 namespace PathfinderCampaignManager.Domain.Tests;
 

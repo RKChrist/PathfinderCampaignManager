@@ -1,5 +1,6 @@
 @using PathfinderCampaignManager.Application.CharacterCreation.Models
 @using PathfinderCampaignManager.Domain.Enums
+@using PathfinderCampaignManager.Domain.Entities.Pathfinder
 
 <div class="pf2e-class-component wizard-class">
     <div class="class-header">
@@ -203,30 +204,30 @@
             SpellcastingAbility = "Intelligence",
             InitialProficiencies = new ClassProficiencies
             {
-                Perception = ProficiencyLevel.Trained,
-                FortitudeSave = ProficiencyLevel.Trained,
-                ReflexSave = ProficiencyLevel.Trained,
-                WillSave = ProficiencyLevel.Expert,
-                Skills = new Dictionary<string, ProficiencyLevel>
+                Perception = ProficiencyRank.Trained,
+                FortitudeSave = ProficiencyRank.Trained,
+                ReflexSave = ProficiencyRank.Trained,
+                WillSave = ProficiencyRank.Expert,
+                Skills = new Dictionary<string, ProficiencyRank>
                 {
-                    ["Arcana"] = ProficiencyLevel.Trained,
-                    ["Crafting"] = ProficiencyLevel.Untrained
+                    ["Arcana"] = ProficiencyRank.Trained,
+                    ["Crafting"] = ProficiencyRank.Untrained
                 },
-                Weapons = new Dictionary<string, ProficiencyLevel>
+                Weapons = new Dictionary<string, ProficiencyRank>
                 {
-                    ["Simple"] = ProficiencyLevel.Trained,
-                    ["Martial"] = ProficiencyLevel.Untrained,
-                    ["Advanced"] = ProficiencyLevel.Untrained
+                    ["Simple"] = ProficiencyRank.Trained,
+                    ["Martial"] = ProficiencyRank.Untrained,
+                    ["Advanced"] = ProficiencyRank.Untrained
                 },
-                Armor = new Dictionary<string, ProficiencyLevel>
+                Armor = new Dictionary<string, ProficiencyRank>
                 {
-                    ["Unarmored"] = ProficiencyLevel.Trained,
-                    ["Light"] = ProficiencyLevel.Untrained,
-                    ["Medium"] = ProficiencyLevel.Untrained,
-                    ["Heavy"] = ProficiencyLevel.Untrained
+                    ["Unarmored"] = ProficiencyRank.Trained,
+                    ["Light"] = ProficiencyRank.Untrained,
+                    ["Medium"] = ProficiencyRank.Untrained,
+                    ["Heavy"] = ProficiencyRank.Untrained
                 },
-                SpellAttacks = ProficiencyLevel.Trained,
-                SpellDCs = ProficiencyLevel.Trained
+                SpellAttacks = ProficiencyRank.Trained,
+                SpellDCs = ProficiencyRank.Trained
             }
         };
     }

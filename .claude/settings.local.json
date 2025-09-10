@@ -407,7 +407,12 @@
       "Read(/C:\\Users\\roo12\\Desktop\\AiExperiments\\src\\Presentation\\Client\\Pages\\Combat/**)",
       "Read(/C:\\Users\\roo12\\Desktop\\AiExperiments\\src\\Presentation\\Client\\Pages\\Combat/**)",
       "Read(/C:\\Users\\roo12\\Desktop\\AiExperiments\\src\\Presentation\\Client\\Pages\\Combat/**)",
-      "Bash(tasklist:*)"
+      "Bash(tasklist:*)",
+      "WebFetch(domain:app.demiplane.com)",
+      "WebFetch(domain:2e.aonprd.com)",
+      "WebFetch(domain:glasstopgames.com)",
+      "WebFetch(domain:1d6chan.miraheze.org)",
+      "WebFetch(domain:pf2.d20pfsrd.com)"
     ],
     "deny": [],
     "ask": []

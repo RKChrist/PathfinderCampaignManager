@@ -12,7 +12,7 @@ namespace PathfinderCampaignManager.Presentation.Server.Controllers;
 public class CampaignController : ControllerBase
 {
     // In a real implementation, you would inject your campaign repository/service
-    private static readonly List<Campaign> _campaigns = new();
+    public static readonly List<Campaign> _campaigns = new();
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<CampaignDto>>> GetCampaigns()
@@ -144,6 +144,82 @@ public class CampaignController : ControllerBase
         return Ok(new JoinTokenResponse { JoinToken = campaign.JoinToken });
     }
 
+    [HttpGet("{id}/members")]
+    public async Task<ActionResult<IEnumerable<CampaignMemberDto>>> GetCampaignMembers(Guid id)
+    {
+        var userId = GetCurrentUserId();
+        var campaign = _campaigns.FirstOrDefault(c => c.Id == id);
+
+        if (campaign == null)
+            return NotFound();
+
+        if (!campaign.IsUserMember(userId) && campaign.DMUserId != userId)
+            return Forbid();
+
+        var members = campaign.Members.Select(m => new CampaignMemberDto
+        {
+            Id = m.Id,
+            UserId = m.UserId,
+            Alias = m.Alias,
+            Role = m.Role,
+            JoinedAt = m.JoinedAt,
+            LastSeenAt = m.LastSeenAt,
+            UserName = $"User-{m.UserId.ToString()[..8]}" // In real implementation, get from User entity
+        }).ToList();
+
+        return Ok(members);
+    }
+
+    [HttpDelete("{id}/members/{memberId}")]
+    public async Task<ActionResult> RemoveCampaignMember(Guid id, Guid memberId)
+    {
+        var userId = GetCurrentUserId();
+        var campaign = _campaigns.FirstOrDefault(c => c.Id == id);
+
+        if (campaign == null)
+            return NotFound();
+
+        if (campaign.DMUserId != userId)
+            return Forbid("Only the DM can remove members");
+
+        var member = campaign.Members.FirstOrDefault(m => m.Id == memberId);
+        if (member == null)
+            return NotFound("Member not found");
+
+        if (member.UserId == campaign.DMUserId)
+            return BadRequest("Cannot remove the DM from the campaign");
+
+        campaign.RemoveMember(member.UserId);
+
+        return Ok(new { Message = "Member removed successfully" });
+    }
+
+    [HttpPost("{id}/invite")]
+    public async Task<ActionResult<InviteResponse>> CreateInviteLink(Guid id, [FromBody] CreateInviteRequest request)
+    {
+        var userId = GetCurrentUserId();
+        var campaign = _campaigns.FirstOrDefault(c => c.Id == id);
+
+        if (campaign == null)
+            return NotFound();
+
+        if (campaign.DMUserId != userId)
+            return Forbid("Only the DM can create invite links");
+
+        // Generate a unique invite link
+        var inviteCode = Guid.NewGuid().ToString("N")[..12].ToUpper();
+        var inviteLink = $"{Request.Scheme}://{Request.Host}/join/{inviteCode}";
+
+        // In a real implementation, you would store this invite with expiration
+        // For now, we'll use the campaign's join token
+        return Ok(new InviteResponse
+        {
+            InviteCode = campaign.JoinToken.ToString(),
+            InviteLink = $"{Request.Scheme}://{Request.Host}/join/{campaign.JoinToken}",
+            ExpiresAt = DateTime.UtcNow.AddDays(7) // 7 days expiration
+        });
+    }
+
     [HttpGet("join/{token}")]
     [AllowAnonymous]
     public async Task<ActionResult<CampaignJoinInfo>> GetCampaignByJoinToken(Guid token)
@@ -240,4 +316,28 @@ public class CampaignJoinInfo
 public class JoinTokenResponse
 {
     public Guid JoinToken { get; set; }
+}
+
+public class CampaignMemberDto
+{
+    public Guid Id { get; set; }
+    public Guid UserId { get; set; }
+    public string Alias { get; set; } = string.Empty;
+    public string UserName { get; set; } = string.Empty;
+    public CampaignRole Role { get; set; }
+    public DateTime JoinedAt { get; set; }
+    public DateTime? LastSeenAt { get; set; }
+}
+
+public class CreateInviteRequest
+{
+    public string? CustomMessage { get; set; }
+    public DateTime? ExpiresAt { get; set; }
+}
+
+public class InviteResponse
+{
+    public string InviteCode { get; set; } = string.Empty;
+    public string InviteLink { get; set; } = string.Empty;
+    public DateTime ExpiresAt { get; set; }
 }

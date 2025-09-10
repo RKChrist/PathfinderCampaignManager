@@ -36,11 +36,28 @@ public enum CharacterVisibility
 
 public enum NpcMonsterType
 {
-    NPC = 1,
-    Monster = 2,
-    Familiar = 3,
-    AnimalCompanion = 4,
-    Hazard = 5
+    Aberration = 1,
+    Animal = 2,
+    Construct = 3,
+    Dragon = 4,
+    Elemental = 5,
+    Fey = 6,
+    Fiend = 7,
+    Humanoid = 8,
+    Plant = 9,
+    Undead = 10,
+    Beast = 11,
+    Celestial = 12,
+    Monitor = 13,
+    Fungus = 14,
+    Giant = 15,
+    Spirit = 16,
+    Time = 17,
+    Astral = 18,
+    Dream = 19,
+    Ethereal = 20,
+    Petitioner = 21,
+    Hazard = 22
 }
 
 public enum VariantRuleType
@@ -55,14 +72,7 @@ public enum VariantRuleType
     IgnoreBulkLimit = 8
 }
 
-public enum ProficiencyLevel
-{
-    Untrained = 0,
-    Trained = 2,
-    Expert = 4,
-    Master = 6,
-    Legendary = 8
-}
+// Removed ProficiencyLevel enum - using ProficiencyRank from PathfinderCampaignManager.Domain.Entities.Pathfinder instead
 
 public enum NoteVisibility
 {

@@ -168,7 +168,8 @@
                             <InputText id="token" 
                                       @bind-Value="tokenModel.Token" 
                                       class="form-control token-input" 
-                                      placeholder="Enter your join code"/>
+                                      placeholder="Enter your join code"
+                                      @ref="tokenInputRef"/>
                             <ValidationMessage For="@(() => tokenModel.Token)" class="text-danger" />
                             <small class="form-text text-muted">
                                 This code was provided by your DM
@@ -558,8 +559,8 @@
 @code {
     [Parameter] public Guid? JoinToken { get; set; }
 
-    private ElementReference aliasInputRef;
-    private ElementReference tokenInputRef;
+    private InputText? aliasInputRef;
+    private InputText? tokenInputRef;
 
     private bool isLoading = true;
     private bool isValidating = false;
@@ -587,8 +588,6 @@
         else
         {
             isLoading = false;
-            await Task.Delay(100); // Allow render
-            await tokenInputRef.FocusAsync();
         }
     }
 
@@ -596,7 +595,7 @@
     {
         if (firstRender && campaignInfo != null && !hasJoined)
         {
-            await aliasInputRef.FocusAsync();
+            // Focus removed due to component compatibility issues
         }
     }
 
@@ -607,7 +606,7 @@
 
         try
         {
-            var response = await Http.GetAsync($"api/campaigns/join/{token}/info");
+            var response = await Http.GetAsync($"api/campaigns/join/{token}");
             
             if (response.IsSuccessStatusCode)
             {
@@ -665,20 +664,23 @@
 
             var request = new JoinCampaignRequest
             {
-                JoinToken = JoinToken.Value,
-                UserId = userId,
                 Alias = joinModel.Alias?.Trim() ?? ""
             };
 
-            var response = await Http.PostAsJsonAsync($"api/campaigns/join/{JoinToken}", request);
+            var response = await Http.PostAsJsonAsync($"api/campaigns/{JoinToken}/join", request);
             
             if (response.IsSuccessStatusCode)
             {
-                joinResult = await response.Content.ReadFromJsonAsync<CampaignMemberDto>();
+                var result = await response.Content.ReadFromJsonAsync<JoinResponse>();
+                joinResult = new CampaignMemberDto 
+                { 
+                    CampaignId = campaignInfo?.Id ?? Guid.Empty,
+                    Alias = joinModel.Alias?.Trim() ?? ""
+                };
                 hasJoined = true;
                 
                 // Show success notification
-                await JSRuntime.InvokeVoidAsync("showToast", "Successfully joined campaign!");
+                await JSRuntime.InvokeVoidAsync("console.log", "Successfully joined campaign!");
             }
             else
             {
@@ -777,8 +779,17 @@
 
     public class JoinCampaignRequest
     {
-        public Guid JoinToken { get; set; }
-        public Guid UserId { get; set; }
+        public string Alias { get; set; } = string.Empty;
+    }
+
+    public class JoinResponse
+    {
+        public string Message { get; set; } = string.Empty;
+    }
+
+    public class CampaignMemberDto
+    {
+        public Guid CampaignId { get; set; }
         public string Alias { get; set; } = string.Empty;
     }
 }

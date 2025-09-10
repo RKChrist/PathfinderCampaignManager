@@ -78,3 +78,12 @@ public interface INpcMonsterRepository : IRepository<NpcMonster>
     Task<IEnumerable<NpcMonster>> GetTemplatesAsync(CancellationToken cancellationToken = default);
     Task<IEnumerable<NpcMonster>> GetLibraryNpcsAsync(CancellationToken cancellationToken = default);
 }
+
+public interface ICampaignRepository : IRepository<Campaign>
+{
+    Task<Campaign?> GetByJoinTokenAsync(Guid joinToken, CancellationToken cancellationToken = default);
+    Task<IEnumerable<Campaign>> GetByDMUserIdAsync(Guid dmUserId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<Campaign>> GetByMemberUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
+    Task<Campaign?> GetWithMembersAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<Campaign?> GetWithSessionsAndCharactersAsync(Guid id, CancellationToken cancellationToken = default);
+}

@@ -1,8 +1,9 @@
-using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using PathfinderCampaignManager.Application.Encounters.Commands;
-using PathfinderCampaignManager.Application.Encounters.Queries;
+using Microsoft.AspNetCore.SignalR;
+using PathfinderCampaignManager.Domain.Entities.Combat;
+using PathfinderCampaignManager.Presentation.Server.Hubs;
+using System.Security.Claims;
 
 namespace PathfinderCampaignManager.Presentation.Server.Controllers;
 
@@ -11,211 +12,306 @@ namespace PathfinderCampaignManager.Presentation.Server.Controllers;
 [Authorize]
 public class CombatController : ControllerBase
 {
-    private readonly IMediator _mediator;
+    private readonly IHubContext<CombatHub> _combatHub;
+    private readonly ILogger<CombatController> _logger;
 
-    public CombatController(IMediator mediator)
+    // In-memory storage for demo purposes - made public so CombatHub can access it
+    public static readonly Dictionary<Guid, CombatSession> _combatSessions = new();
+
+    public CombatController(
+        IHubContext<CombatHub> combatHub,
+        ILogger<CombatController> logger)
     {
-        _mediator = mediator;
+        _combatHub = combatHub;
+        _logger = logger;
     }
 
-    [HttpPost("encounters")]
-    public async Task<ActionResult<Guid>> CreateEncounter([FromBody] CreateEncounterRequest request)
+    [HttpGet("campaigns/{campaignId:guid}")]
+    public async Task<ActionResult<PathfinderCampaignManager.Presentation.Shared.Models.CombatSession>> GetCampaignCombatSession(Guid campaignId)
     {
-        var command = new CreateEncounterCommand(
-            request.SessionId,
-            request.Name,
-            request.Description
-        );
-
-        var result = await _mediator.Send(command);
-
-        if (result.IsSuccess)
+        try
         {
-            return CreatedAtAction(nameof(GetEncounter), new { id = result.Value }, result.Value);
-        }
+            var currentUserId = GetCurrentUserId();
+            
+            // Get or create combat session
+            var combatSession = await GetOrCreateCombatSessionInternal(campaignId);
 
-        return BadRequest(result.Error);
+            var sharedCombatSession = new PathfinderCampaignManager.Presentation.Shared.Models.CombatSession
+            {
+                Id = combatSession.Id,
+                Name = combatSession.Name,
+                IsActive = combatSession.IsActive,
+                Round = combatSession.Round,
+                CurrentTurn = combatSession.CurrentTurn,
+                Participants = combatSession.Participants.Select(MapToSharedParticipant).ToList()
+            };
+
+            return Ok(sharedCombatSession);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting combat session for campaign {CampaignId}", campaignId);
+            return StatusCode(500, "Internal server error");
+        }
     }
 
-    [HttpGet("encounters/{id:guid}")]
-    public async Task<ActionResult<EncounterResponse>> GetEncounter(Guid id)
+    [HttpPost("campaigns/{campaignId:guid}/start")]
+    public async Task<ActionResult> StartCampaignCombat(Guid campaignId)
     {
-        var query = new GetEncounterByIdQuery(id);
-        var result = await _mediator.Send(query);
-
-        if (result.IsSuccess)
+        try
         {
-            return Ok(EncounterResponse.FromEntity(result.Value));
-        }
+            var combatSession = await GetOrCreateCombatSessionInternal(campaignId);
+            
+            if (!combatSession.Participants.Any())
+                return BadRequest("Cannot start combat without participants");
 
-        return NotFound(result.Error);
+            combatSession.IsActive = true;
+            combatSession.Round = 1;
+            combatSession.CurrentTurn = 0;
+
+            // Sort participants by initiative (descending)
+            combatSession.Participants = combatSession.Participants
+                .OrderByDescending(p => p.Initiative)
+                .ThenByDescending(p => p.InitiativeModifier)
+                .ToList();
+
+            _combatSessions[campaignId] = combatSession;
+
+            // Notify all connected clients
+            await _combatHub.Clients.Group($"Combat-{campaignId}").SendAsync("CombatUpdated", campaignId.ToString());
+
+            return Ok();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error starting combat for campaign {CampaignId}", campaignId);
+            return StatusCode(500, "Internal server error");
+        }
     }
 
-    [HttpPut("encounters/{id:guid}/start")]
-    public async Task<ActionResult> StartEncounter(Guid id)
+    [HttpPost("add-participants")]
+    public async Task<ActionResult> AddParticipantsToCombat([FromBody] AddParticipantsRequest request)
     {
-        var command = new StartEncounterCommand(id);
-        var result = await _mediator.Send(command);
-
-        if (result.IsSuccess)
+        try
         {
-            return NoContent();
-        }
+            var combatSession = await GetOrCreateCombatSessionInternal(request.CampaignId);
 
-        return BadRequest(result.Error);
+            foreach (var participantData in request.Participants)
+            {
+                if (participantData.TryGetValue("Id", out var idValue) && Guid.TryParse(idValue?.ToString(), out var id))
+                {
+                    // Check if participant already exists
+                    if (combatSession.Participants.Any(p => p.Id == id || p.CharacterId == id))
+                        continue;
+
+                    var participant = new CombatParticipant
+                    {
+                        Id = Guid.NewGuid(),
+                        Name = participantData.GetValueOrDefault("Name", "Unknown").ToString() ?? "Unknown",
+                        Type = ParseParticipantType(participantData.GetValueOrDefault("Type", "PlayerCharacter").ToString()),
+                        Initiative = Convert.ToInt32(participantData.GetValueOrDefault("Initiative", 0)),
+                        InitiativeModifier = 0, // Could be calculated from stats
+                        HitPoints = Convert.ToInt32(participantData.GetValueOrDefault("HitPoints", 1)),
+                        CurrentHitPoints = Convert.ToInt32(participantData.GetValueOrDefault("HitPoints", 1)),
+                        ArmorClass = Convert.ToInt32(participantData.GetValueOrDefault("ArmorClass", 10)),
+                        FortitudeSave = 0, // Would be calculated from character data
+                        ReflexSave = 0,
+                        WillSave = 0,
+                        IsPlayerCharacter = Convert.ToBoolean(participantData.GetValueOrDefault("IsPlayerCharacter", false)),
+                        IsHidden = false,
+                        CharacterId = Convert.ToBoolean(participantData.GetValueOrDefault("IsPlayerCharacter", false)) ? id : null,
+                        PlayerId = Convert.ToBoolean(participantData.GetValueOrDefault("IsPlayerCharacter", false)) ? GetCurrentUserId() : null,
+                        Notes = string.Empty,
+                        Conditions = new List<string>(),
+                        Level = 1, // Would come from character data
+                        Class = "Unknown",
+                        Ancestry = "Unknown"
+                    };
+
+                    combatSession.Participants.Add(participant);
+                }
+            }
+
+            _combatSessions[request.CampaignId] = combatSession;
+
+            // Notify all connected clients via SignalR
+            await _combatHub.Clients.Group($"Combat-{request.CampaignId}").SendAsync("ParticipantsAdded", 
+                combatSession.Participants.Select(MapToSharedParticipant).ToList());
+
+            _logger.LogInformation("Added {Count} participants to combat session for campaign {CampaignId}", 
+                request.Participants.Count, request.CampaignId);
+
+            return Ok(new { Message = "Participants added successfully", Count = request.Participants.Count });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error adding participants to combat for campaign {CampaignId}", request.CampaignId);
+            return StatusCode(500, "Internal server error");
+        }
     }
 
-    [HttpPut("encounters/{id:guid}/end")]
-    public async Task<ActionResult> EndEncounter(Guid id)
+    private static CombatParticipantType ParseParticipantType(string? typeString)
     {
-        var command = new EndEncounterCommand(id);
-        var result = await _mediator.Send(command);
-
-        if (result.IsSuccess)
+        return typeString?.ToLower() switch
         {
-            return NoContent();
-        }
-
-        return BadRequest(result.Error);
+            "playercharacter" => CombatParticipantType.PlayerCharacter,
+            "nonplayercharacter" => CombatParticipantType.NonPlayerCharacter,
+            "monster" => CombatParticipantType.Monster,
+            "hazard" => CombatParticipantType.Hazard,
+            _ => CombatParticipantType.PlayerCharacter
+        };
     }
 
-    [HttpPost("encounters/{encounterId:guid}/combatants")]
-    public async Task<ActionResult> AddCombatant(Guid encounterId, [FromBody] AddCombatantRequest request)
+    private async Task<CombatSession> GetOrCreateCombatSessionInternal(Guid campaignId)
     {
-        var command = new AddCombatantCommand(
-            encounterId,
-            request.Name,
-            request.Initiative,
-            request.CharacterId,
-            request.NpcMonsterId
-        );
-
-        var result = await _mediator.Send(command);
-
-        if (result.IsSuccess)
+        if (_combatSessions.TryGetValue(campaignId, out var existingSession))
         {
-            return NoContent();
+            return existingSession;
         }
 
-        return BadRequest(result.Error);
+        // Create new combat session with mock data
+        var participants = new List<CombatParticipant>
+        {
+            new CombatParticipant
+            {
+                Id = Guid.NewGuid(),
+                Name = "Test Fighter",
+                Type = CombatParticipantType.PlayerCharacter,
+                Initiative = 15,
+                InitiativeModifier = 2,
+                HitPoints = 25,
+                CurrentHitPoints = 25,
+                ArmorClass = 18,
+                FortitudeSave = 5,
+                ReflexSave = 2,
+                WillSave = 1,
+                IsPlayerCharacter = true,
+                IsHidden = false,
+                CharacterId = Guid.NewGuid(),
+                Notes = string.Empty,
+                Conditions = new List<string>(),
+                Level = 1,
+                Class = "Fighter",
+                Ancestry = "Human"
+            }
+        };
+
+        var combatSession = new CombatSession
+        {
+            Id = Guid.NewGuid(),
+            CampaignId = campaignId,
+            Name = $"Combat Session for Campaign {campaignId}",
+            IsActive = false,
+            Round = 0,
+            CurrentTurn = 0,
+            Participants = participants,
+            // CreatedAt and CreatedBy not available in CombatSession
+            // These would typically be in BaseEntity but CombatSession may not inherit from it
+        };
+
+        _combatSessions[campaignId] = combatSession;
+        return combatSession;
     }
 
-    [HttpDelete("encounters/{encounterId:guid}/combatants/{combatantId:guid}")]
-    public async Task<ActionResult> RemoveCombatant(Guid encounterId, Guid combatantId)
+    private CombatParticipantDto MapToParticipantDto(CombatParticipant participant)
     {
-        var command = new RemoveCombatantCommand(encounterId, combatantId);
-        var result = await _mediator.Send(command);
-
-        if (result.IsSuccess)
+        return new CombatParticipantDto
         {
-            return NoContent();
-        }
-
-        return BadRequest(result.Error);
+            Id = participant.Id,
+            Name = participant.Name,
+            Type = participant.Type,
+            Initiative = participant.Initiative,
+            InitiativeModifier = participant.InitiativeModifier,
+            HitPoints = participant.HitPoints,
+            CurrentHitPoints = participant.CurrentHitPoints,
+            ArmorClass = participant.ArmorClass,
+            FortitudeSave = participant.FortitudeSave,
+            ReflexSave = participant.ReflexSave,
+            WillSave = participant.WillSave,
+            IsPlayerCharacter = participant.IsPlayerCharacter,
+            IsHidden = participant.IsHidden,
+            CharacterId = participant.CharacterId,
+            Notes = participant.Notes,
+            Conditions = participant.Conditions?.ToList() ?? new List<string>(),
+            Level = participant.Level,
+            Class = participant.Class,
+            Ancestry = participant.Ancestry
+        };
     }
 
-    [HttpPut("encounters/{encounterId:guid}/next-turn")]
-    public async Task<ActionResult> NextTurn(Guid encounterId)
+    private PathfinderCampaignManager.Presentation.Shared.Models.CombatParticipant MapToSharedParticipant(CombatParticipant participant)
     {
-        var command = new NextTurnCommand(encounterId);
-        var result = await _mediator.Send(command);
-
-        if (result.IsSuccess)
+        return new PathfinderCampaignManager.Presentation.Shared.Models.CombatParticipant
         {
-            return NoContent();
-        }
-
-        return BadRequest(result.Error);
+            Id = participant.Id,
+            Name = participant.Name,
+            Type = participant.Type.ToString(),
+            Initiative = participant.Initiative,
+            InitiativeModifier = participant.InitiativeModifier,
+            HitPoints = participant.HitPoints,
+            CurrentHitPoints = participant.CurrentHitPoints,
+            ArmorClass = participant.ArmorClass,
+            FortitudeSave = participant.FortitudeSave,
+            ReflexSave = participant.ReflexSave,
+            WillSave = participant.WillSave,
+            IsPlayerCharacter = participant.IsPlayerCharacter,
+            IsHidden = participant.IsHidden,
+            CharacterId = participant.CharacterId?.ToString(),
+            PlayerId = participant.PlayerId?.ToString(),
+            Notes = participant.Notes,
+            Conditions = participant.Conditions?.ToList() ?? new List<string>(),
+            Level = participant.Level,
+            Class = participant.Class,
+            Ancestry = participant.Ancestry,
+            CreatureType = participant.Class ?? "Unknown",
+            PassivePerception = 10 + participant.Level // Simple calculation
+        };
     }
 
-    [HttpGet("encounters/active")]
-    public async Task<ActionResult<IEnumerable<EncounterResponse>>> GetActiveEncounters()
+    private Guid GetCurrentUserId()
     {
-        var query = new GetActiveEncountersQuery();
-        var result = await _mediator.Send(query);
-
-        if (result.IsSuccess)
-        {
-            var response = result.Value.Select(EncounterResponse.FromEntity);
-            return Ok(response);
-        }
-
-        return BadRequest(result.Error);
-    }
-
-    [HttpGet("sessions/{sessionId:guid}/encounters")]
-    public async Task<ActionResult<IEnumerable<EncounterResponse>>> GetEncountersBySession(Guid sessionId)
-    {
-        var query = new GetEncountersBySessionQuery(sessionId);
-        var result = await _mediator.Send(query);
-
-        if (result.IsSuccess)
-        {
-            var response = result.Value.Select(EncounterResponse.FromEntity);
-            return Ok(response);
-        }
-
-        return BadRequest(result.Error);
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return Guid.Parse(userIdClaim ?? throw new InvalidOperationException("User ID not found in token"));
     }
 }
 
-public record CreateEncounterRequest(
-    string Name,
-    Guid SessionId,
-    string? Description = null
-);
-
-public record AddCombatantRequest(
-    string Name,
-    int Initiative,
-    Guid? CharacterId = null,
-    Guid? NpcMonsterId = null
-);
-
-public record EncounterResponse(
-    Guid Id,
-    string Name,
-    Guid SessionId,
-    string? Description,
-    bool IsActive,
-    int CurrentRound,
-    int CurrentTurn,
-    DateTime CreatedAt,
-    DateTime? UpdatedAt,
-    IEnumerable<CombatantResponse> Combatants
-)
+// DTOs
+public class CombatSessionDto
 {
-    public static EncounterResponse FromEntity(PathfinderCampaignManager.Domain.Entities.Encounter encounter) =>
-        new(
-            encounter.Id,
-            encounter.Name,
-            encounter.SessionId,
-            encounter.Description,
-            encounter.IsActive,
-            encounter.CurrentRound,
-            encounter.CurrentTurn,
-            encounter.CreatedAt,
-            encounter.UpdatedAt,
-            encounter.Combatants.Select(CombatantResponse.FromEntity)
-        );
+    public Guid Id { get; set; }
+    public Guid CampaignId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public bool IsActive { get; set; }
+    public int Round { get; set; }
+    public int CurrentTurn { get; set; }
+    public List<CombatParticipantDto> Participants { get; set; } = new();
 }
 
-public record CombatantResponse(
-    Guid Id,
-    string Name,
-    int Initiative,
-    Guid? CharacterId,
-    Guid? NpcMonsterId,
-    int TurnOrder
-)
+public class CombatParticipantDto
 {
-    public static CombatantResponse FromEntity(PathfinderCampaignManager.Domain.Entities.Combatant combatant) =>
-        new(
-            combatant.Id,
-            combatant.Name,
-            combatant.Initiative,
-            combatant.CharacterId,
-            combatant.NpcMonsterId,
-            combatant.TurnOrder
-        );
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public CombatParticipantType Type { get; set; }
+    public int Initiative { get; set; }
+    public int InitiativeModifier { get; set; }
+    public int HitPoints { get; set; }
+    public int CurrentHitPoints { get; set; }
+    public int ArmorClass { get; set; }
+    public int FortitudeSave { get; set; }
+    public int ReflexSave { get; set; }
+    public int WillSave { get; set; }
+    public bool IsPlayerCharacter { get; set; }
+    public bool IsHidden { get; set; }
+    public Guid? CharacterId { get; set; }
+    public string Notes { get; set; } = string.Empty;
+    public List<string> Conditions { get; set; } = new();
+    public int Level { get; set; }
+    public string? Class { get; set; }
+    public string? Ancestry { get; set; }
+}
+
+public class AddParticipantsRequest
+{
+    public Guid CampaignId { get; set; }
+    public List<Dictionary<string, object>> Participants { get; set; } = new();
 }

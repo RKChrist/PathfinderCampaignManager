@@ -76,6 +76,35 @@
                             </select>
                         </div>
                         <div class="form-group">
+                            <label>Creature Type</label>
+                            <select class="form-control" @bind="creatureType">
+                                <option value="Aberration">Aberration</option>
+                                <option value="Animal">Animal</option>
+                                <option value="Astral">Astral</option>
+                                <option value="Beast">Beast</option>
+                                <option value="Celestial">Celestial</option>
+                                <option value="Construct">Construct</option>
+                                <option value="Dragon">Dragon</option>
+                                <option value="Dream">Dream</option>
+                                <option value="Elemental">Elemental</option>
+                                <option value="Ethereal">Ethereal</option>
+                                <option value="Fey">Fey</option>
+                                <option value="Fiend">Fiend</option>
+                                <option value="Fungus">Fungus</option>
+                                <option value="Giant">Giant</option>
+                                <option value="Hazard">Hazard</option>
+                                <option value="Humanoid" selected>Humanoid</option>
+                                <option value="Monitor">Monitor</option>
+                                <option value="Petitioner">Petitioner</option>
+                                <option value="Plant">Plant</option>
+                                <option value="Spirit">Spirit</option>
+                                <option value="Time">Time</option>
+                                <option value="Undead">Undead</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
                             <label>Rarity</label>
                             <select class="form-control" @bind="monster.Rarity">
                                 <option value="Common" selected>Common</option>

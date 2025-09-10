@@ -6,12 +6,14 @@ namespace PathfinderCampaignManager.Presentation.Client.Services;
 public class CampaignSignalRService : IAsyncDisposable
 {
     private readonly ILogger<CampaignSignalRService> _logger;
+    private readonly HttpClient _httpClient;
     private HubConnection? _hubConnection;
     private bool _isConnected;
 
-    public CampaignSignalRService(ILogger<CampaignSignalRService> logger)
+    public CampaignSignalRService(ILogger<CampaignSignalRService> logger, HttpClient httpClient)
     {
         _logger = logger;
+        _httpClient = httpClient;
     }
 
     // Events for campaign-level updates
@@ -22,6 +24,8 @@ public class CampaignSignalRService : IAsyncDisposable
     public event Func<string, object, Task>? CharacterSheetReceived;
     public event Func<string, Task>? CharacterSheetNotFound;
     public event Func<object, Task>? MessageReceived;
+    public event Func<string, string, Task>? ChatMessageReceived;
+    public event Action<string, string>? OnChatMessageReceived;
     public event Func<string, DateTime, Task>? CombatSessionStarted;
     public event Func<string, DateTime, Task>? CombatSessionEnded;
     public event Func<string, string, string, DateTime, Task>? UserStatusUpdated;
@@ -30,18 +34,28 @@ public class CampaignSignalRService : IAsyncDisposable
 
     public bool IsConnected => _isConnected;
 
-    public async Task StartAsync(string baseUrl)
+    public async Task StartAsync(string? accessToken = null)
     {
         try
         {
-            _hubConnection = new HubConnectionBuilder()
-                .WithUrl($"{baseUrl}/campaignhub")
+            var baseAddress = _httpClient.BaseAddress?.ToString().TrimEnd('/') ?? "https://localhost:7082";
+            var hubUrl = $"{baseAddress}/campaignhub";
+
+            var hubConnectionBuilder = new HubConnectionBuilder()
+                .WithUrl(hubUrl, options =>
+                {
+                    if (!string.IsNullOrEmpty(accessToken))
+                    {
+                        options.AccessTokenProvider = () => Task.FromResult(accessToken);
+                    }
+                })
                 .WithAutomaticReconnect(new[] { TimeSpan.Zero, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30) })
                 .ConfigureLogging(logging =>
                 {
                     logging.SetMinimumLevel(LogLevel.Information);
-                })
-                .Build();
+                });
+
+            _hubConnection = hubConnectionBuilder.Build();
 
             // Register event handlers
             RegisterEventHandlers();
@@ -103,6 +117,12 @@ public class CampaignSignalRService : IAsyncDisposable
         _hubConnection.On<object>("MessageReceived", (message) =>
         {
             return MessageReceived?.Invoke(message) ?? Task.CompletedTask;
+        });
+
+        _hubConnection.On<string, string>("ChatMessageReceived", (campaignId, messageJson) =>
+        {
+            OnChatMessageReceived?.Invoke(campaignId, messageJson);
+            return ChatMessageReceived?.Invoke(campaignId, messageJson) ?? Task.CompletedTask;
         });
 
         _hubConnection.On<string, DateTime>("CombatSessionStarted", (combatId, timestamp) =>
@@ -188,6 +208,15 @@ public class CampaignSignalRService : IAsyncDisposable
         if (_hubConnection?.State == HubConnectionState.Connected)
         {
             await _hubConnection.SendAsync("ShareContent", campaignId, contentType, content, title);
+        }
+    }
+
+    public async Task AddParticipantsToCombatAsync(string campaignId, List<object> participants)
+    {
+        if (_hubConnection?.State == HubConnectionState.Connected)
+        {
+            await _hubConnection.SendAsync("AddParticipantsToCombat", campaignId, participants);
+            _logger.LogInformation("Added {Count} participants to combat for campaign {CampaignId}", participants.Count, campaignId);
         }
     }
 

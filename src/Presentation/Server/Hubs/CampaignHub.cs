@@ -192,6 +192,20 @@ public class CampaignHub : Hub
         });
     }
 
+    public async Task AddParticipantsToCombat(string campaignId, List<object> participants)
+    {
+        var groupName = $"Campaign-{campaignId}";
+        var userName = Context.User?.Identity?.Name ?? "Unknown";
+        
+        await Clients.Group(groupName).SendAsync("ParticipantsAddedToCombat", new
+        {
+            CampaignId = campaignId,
+            Participants = participants,
+            AddedBy = userName,
+            Timestamp = DateTime.UtcNow
+        });
+    }
+
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         if (UserCampaignMapping.TryGetValue(Context.ConnectionId, out var campaignId))

@@ -1,9 +1,394 @@
-@page "/character-wizard/review"
+@using PathfinderCampaignManager.Domain.Enums
+@using PathfinderCampaignManager.Domain.Interfaces
 
 <div class="character-wizard-review-step">
     <h3>Review Character</h3>
-    <p>Review your completed character for the character wizard:</p>
-    <div class="review-wizard-options">
-        <p>Character wizard review step under construction</p>
+    
+    @if (Character == null)
+    {
+        <div class="no-character-message">
+            <p>No character data available to review.</p>
+        </div>
+        return;
+    }
+
+    <div class="review-content">
+        <!-- Character Summary -->
+        <div class="character-summary-card">
+            <div class="summary-header">
+                <h4>@(!string.IsNullOrEmpty(Character.Name) ? Character.Name : "Unnamed Character")</h4>
+                <p class="character-build">
+                    Level @Character.Level 
+                    @if (!string.IsNullOrEmpty(Character.Ancestry))
+                    {
+                        <text>@Character.Ancestry </text>
+                    }
+                    @if (!string.IsNullOrEmpty(Character.Class))
+                    {
+                        <text>@Character.Class</text>
+                    }
+                </p>
+            </div>
+            
+            @if (!string.IsNullOrEmpty(Character.Background))
+            {
+                <div class="background-info">
+                    <strong>Background:</strong> @Character.Background
+                </div>
+            }
+        </div>
+
+        <!-- Ability Scores -->
+        @if (CalculatedCharacter?.AbilityScores != null)
+        {
+            <div class="section ability-scores-section">
+                <h4>Ability Scores</h4>
+                <div class="ability-grid">
+                    @foreach (var ability in CalculatedCharacter.AbilityScores)
+                    {
+                        <div class="ability-block">
+                            <div class="ability-name">@ability.Key</div>
+                            <div class="ability-score">@ability.Value</div>
+                            <div class="ability-modifier">@FormatModifier(CalculatedCharacter.AbilityModifiers[ability.Key])</div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- Combat Statistics -->
+        @if (CalculatedCharacter != null)
+        {
+            <div class="section combat-section">
+                <h4>Combat Statistics</h4>
+                <div class="combat-grid">
+                    <div class="combat-stat">
+                        <span class="stat-label">Armor Class</span>
+                        <span class="stat-value">@CalculatedCharacter.ArmorClass</span>
+                    </div>
+                    <div class="combat-stat">
+                        <span class="stat-label">Hit Points</span>
+                        <span class="stat-value">@CalculatedCharacter.HitPoints</span>
+                    </div>
+                    <div class="combat-stat">
+                        <span class="stat-label">Initiative</span>
+                        <span class="stat-value">@FormatModifier(CalculatedCharacter.Initiative)</span>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Selected Feats -->
+        @if (Character.SelectedFeats.Any())
+        {
+            <div class="section feats-section">
+                <h4>Selected Feats</h4>
+                <div class="feats-list">
+                    @foreach (var feat in Character.SelectedFeats)
+                    {
+                        <div class="feat-item">
+                            <span class="feat-name">@feat</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- Validation Issues -->
+        @if (ValidationIssues.Any())
+        {
+            <div class="section validation-section">
+                <h4>Character Validation</h4>
+                <div class="validation-issues">
+                    @foreach (var issue in ValidationIssues.OrderByDescending(i => i.Severity))
+                    {
+                        <div class="validation-issue @GetSeverityClass(issue.Severity)">
+                            <i class="@GetSeverityIcon(issue.Severity)"></i>
+                            <div class="issue-content">
+                                <div class="issue-message">@issue.Message</div>
+                                @if (!string.IsNullOrEmpty(issue.Category))
+                                {
+                                    <div class="issue-category">@issue.Category</div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="section validation-section">
+                <h4>Character Validation</h4>
+                <div class="validation-success">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Character is valid and ready to play!</span>
+                </div>
+            </div>
+        }
+
+        <!-- Character Options Summary -->
+        <div class="section options-section">
+            <h4>Character Options</h4>
+            <div class="options-list">
+                <div class="option-item">
+                    <span class="option-label">Automatic Progression:</span>
+                    <span class="option-value">Enabled</span>
+                </div>
+                <div class="option-item">
+                    <span class="option-label">Free Archetype:</span>
+                    <span class="option-value">Enabled</span>
+                </div>
+                <div class="option-item">
+                    <span class="option-label">Ability Score Generation:</span>
+                    <span class="option-value">Standard Array</span>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
+<style>
+.character-wizard-review-step {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0;
+}
+
+.no-character-message {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-secondary);
+}
+
+.review-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.character-summary-card {
+    background: var(--surface-background);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+}
+
+.summary-header h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.25rem;
+    color: var(--text-primary);
+}
+
+.character-build {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.background-info {
+    margin-top: 1rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.section {
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+}
+
+.section h4 {
+    margin: 0 0 1rem 0;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.5rem;
+}
+
+.ability-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+}
+
+.ability-block {
+    text-align: center;
+    padding: 1rem;
+    background: var(--surface-background);
+    border-radius: 0.375rem;
+    border: 1px solid var(--border-color);
+}
+
+.ability-name {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+}
+
+.ability-score {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.ability-modifier {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.combat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+}
+
+.combat-stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: var(--surface-background);
+    border-radius: 0.375rem;
+    border: 1px solid var(--border-color);
+}
+
+.stat-label {
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.stat-value {
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.feats-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.feat-item {
+    padding: 0.5rem 1rem;
+    background: var(--primary-color-10);
+    border: 1px solid var(--primary-color-20);
+    border-radius: 0.375rem;
+    color: var(--primary-color);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.validation-issues {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.validation-issue {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem;
+    border-radius: 0.375rem;
+}
+
+.validation-issue.error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: var(--error-color);
+}
+
+.validation-issue.warning {
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    color: var(--warning-color);
+}
+
+.issue-content {
+    flex: 1;
+}
+
+.issue-message {
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+}
+
+.issue-category {
+    font-size: 0.8rem;
+    opacity: 0.8;
+}
+
+.validation-success {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.2);
+    border-radius: 0.375rem;
+    color: var(--success-color);
+    font-weight: 500;
+}
+
+.options-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.option-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: var(--surface-background);
+    border-radius: 0.375rem;
+    border: 1px solid var(--border-color);
+}
+
+.option-label {
+    color: var(--text-secondary);
+}
+
+.option-value {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+</style>
+
+@code {
+    [Parameter] public CharacterWizard.CharacterDraft? Character { get; set; }
+    [Parameter] public CalculatedCharacter? CalculatedCharacter { get; set; }
+    [Parameter] public List<ValidationIssue> ValidationIssues { get; set; } = new();
+
+    private string FormatModifier(int modifier)
+    {
+        return modifier >= 0 ? $"+{modifier}" : modifier.ToString();
+    }
+
+    private string GetSeverityClass(ValidationSeverity severity)
+    {
+        return severity switch
+        {
+            ValidationSeverity.Error => "error",
+            ValidationSeverity.Warning => "warning",
+            _ => ""
+        };
+    }
+
+    private string GetSeverityIcon(ValidationSeverity severity)
+    {
+        return severity switch
+        {
+            ValidationSeverity.Error => "fas fa-exclamation-triangle",
+            ValidationSeverity.Warning => "fas fa-exclamation-circle",
+            _ => "fas fa-info-circle"
+        };
+    }
+}

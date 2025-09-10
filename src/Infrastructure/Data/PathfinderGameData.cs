@@ -244,6 +244,468 @@ public static class PathfinderGameData
                 },
                 Source = "Core Rulebook",
                 Rarity = "Common"
+            },
+
+            ["aasimar"] = new PfAncestry
+            {
+                Id = "aasimar",
+                Name = "Aasimar",
+                Description = "Aasimars are mortals born with a connection to celestial beings. They are not fully human, but bear angelic traits that mark them as touched by celestial power.",
+                HitPoints = 8,
+                Size = "Medium",
+                Speeds = new Dictionary<string, int> { ["land"] = 25 },
+                AbilityBoosts = new List<string> { "Charisma", "Free", "Free" },
+                AbilityFlaws = new List<string>(),
+                FreeAbilityBoosts = new List<string> { "Any", "Any" },
+                Languages = new List<string> { "Common", "Celestial" },
+                AdditionalLanguages = 0,
+                Senses = new List<string> { "Darkvision" },
+                SenseRanges = new Dictionary<string, int> { ["darkvision"] = 60 },
+                Traits = new List<string> { "Aasimar", "Humanoid" },
+                Features = new List<PfAncestryFeature>
+                {
+                    new()
+                    {
+                        Id = "celestial-resistance",
+                        Name = "Celestial Resistance",
+                        Description = "You have resistance 5 to acid, cold, and electricity.",
+                        Traits = new List<string>()
+                    }
+                },
+                Heritages = new List<PfHeritage>
+                {
+                    new() { Id = "angelkin", Name = "Angelkin", Description = "Your celestial predecessor was a type of angel. You gain a +1 circumstance bonus to saving throws against effects with the death trait.", Traits = new List<string>() },
+                    new() { Id = "emberkin", Name = "Emberkin", Description = "Your celestial predecessor was an ember of divine flame. You gain the Produce Flame cantrip as a divine innate spell.", Traits = new List<string>() },
+                    new() { Id = "lawbringer", Name = "Lawbringer", Description = "Your celestial predecessor was a lawful celestial. When you roll initiative, you can choose to go last in the turn order.", Traits = new List<string>() }
+                },
+                AncestryFeatLevels = new Dictionary<int, List<string>>
+                {
+                    [1] = new List<string> { "celestial-eyes", "celestial-lore", "halo" },
+                    [5] = new List<string> { "celestial-resistance", "heal-mount" },
+                    [9] = new List<string> { "celestial-wings", "righteous-fire" },
+                    [13] = new List<string> { "blessed-blood", "celestial-word" },
+                    [17] = new List<string> { "redemption", "summon-celestial" }
+                },
+                Source = "Advanced Player's Guide",
+                Rarity = "Uncommon"
+            },
+
+            ["anadi"] = new PfAncestry
+            {
+                Id = "anadi",
+                Name = "Anadi",
+                Description = "Anadi are a reclusive people from the Mwangi Expanse who resemble enormous spiders. Most anadi remain in the Mwangi Jungle, but some occasionally make their way into human society.",
+                HitPoints = 8,
+                Size = "Medium",
+                Speeds = new Dictionary<string, int> { ["land"] = 25, ["climb"] = 25 },
+                AbilityBoosts = new List<string> { "Dexterity", "Wisdom", "Free" },
+                AbilityFlaws = new List<string> { "Constitution" },
+                FreeAbilityBoosts = new List<string> { "Any" },
+                Languages = new List<string> { "Anadi", "Mwangi" },
+                AdditionalLanguages = 1,
+                Senses = new List<string> { "Darkvision" },
+                SenseRanges = new Dictionary<string, int> { ["darkvision"] = 60 },
+                Traits = new List<string> { "Anadi", "Humanoid" },
+                Features = new List<PfAncestryFeature>
+                {
+                    new()
+                    {
+                        Id = "change-shape",
+                        Name = "Change Shape",
+                        Description = "You can change between your human and spider forms. This transformation takes 1 minute.",
+                        Traits = new List<string> { "concentrate", "polymorph", "primal", "transmutation" }
+                    },
+                    new()
+                    {
+                        Id = "fangs",
+                        Name = "Fangs",
+                        Description = "You gain a fangs unarmed attack that deals 1d6 piercing damage.",
+                        Traits = new List<string>()
+                    }
+                },
+                Heritages = new List<PfHeritage>
+                {
+                    new() { Id = "huntsman", Name = "Huntsman Anadi", Description = "You're a skilled ambush hunter. When using a ranged weapon, you don't take a penalty for attacking at your second and third range increments.", Traits = new List<string>() },
+                    new() { Id = "polychromatic", Name = "Polychromatic Anadi", Description = "Your coloration shifts to match your surroundings. You can Hide even when you don't have cover or aren't concealed.", Traits = new List<string>() },
+                    new() { Id = "snaring", Name = "Snaring Anadi", Description = "You can produce a web to Trip creatures. You gain a web ranged unarmed attack with a range increment of 10 feet that deals no damage but can Trip opponents.", Traits = new List<string>() }
+                },
+                AncestryFeatLevels = new Dictionary<int, List<string>>
+                {
+                    [1] = new List<string> { "anadi-lore", "prey-sense", "web-weaver" },
+                    [5] = new List<string> { "adaptive-colorations", "climbing-speed" },
+                    [9] = new List<string> { "perfect-web-navigation", "web-trap" },
+                    [13] = new List<string> { "web-impalement", "cocoon-master" },
+                    [17] = new List<string> { "legendary-web-weaver" }
+                },
+                Source = "The Mwangi Expanse",
+                Rarity = "Rare"
+            },
+
+            ["android"] = new PfAncestry
+            {
+                Id = "android",
+                Name = "Android",
+                Description = "Androids are artificial people created by technology. They have mechanical bodies with synthetic skin and living souls.",
+                HitPoints = 8,
+                Size = "Medium", 
+                Speeds = new Dictionary<string, int> { ["land"] = 25 },
+                AbilityBoosts = new List<string> { "Dexterity", "Intelligence", "Free" },
+                AbilityFlaws = new List<string> { "Charisma" },
+                FreeAbilityBoosts = new List<string> { "Any" },
+                Languages = new List<string> { "Common", "Androffan" },
+                AdditionalLanguages = 1,
+                Senses = new List<string> { "Low-Light Vision" },
+                SenseRanges = new Dictionary<string, int>(),
+                Traits = new List<string> { "Android", "Humanoid" },
+                Features = new List<PfAncestryFeature>
+                {
+                    new()
+                    {
+                        Id = "constructed",
+                        Name = "Constructed",
+                        Description = "Your synthetic body resists ailments better than those of purely biological organisms. You gain a +1 circumstance bonus to saving throws against diseases, poisons, and radiation.",
+                        Traits = new List<string>()
+                    },
+                    new()
+                    {
+                        Id = "emotionally-unaware",
+                        Name = "Emotionally Unaware",
+                        Description = "You have difficulty processing emotions or emotive cues. You take a -1 circumstance penalty to Diplomacy and Performance checks, and on Perception checks to Sense Motive.",
+                        Traits = new List<string>()
+                    }
+                },
+                Heritages = new List<PfHeritage>
+                {
+                    new() { Id = "companion", Name = "Companion Android", Description = "You were created to be a companion or servant. You gain the trained proficiency rank in Diplomacy (or another skill if already trained) and the Hobnobber skill feat.", Traits = new List<string>() },
+                    new() { Id = "impersonator", Name = "Impersonator Android", Description = "You were designed to blend in. You don't have the emotionally unaware ability, and you gain the trained proficiency rank in Deception (or another skill if already trained).", Traits = new List<string>() },
+                    new() { Id = "laborer", Name = "Laborer Android", Description = "You were created for heavy work. You gain the trained proficiency rank in Athletics (or another skill if already trained) and the Hefty Hauler skill feat.", Traits = new List<string>() },
+                    new() { Id = "warrior", Name = "Warrior Android", Description = "Created for combat, you have enhanced physical capabilities. You gain the trained proficiency rank in Intimidation (or another skill if already trained) and the Intimidating Glare skill feat.", Traits = new List<string>() }
+                },
+                AncestryFeatLevels = new Dictionary<int, List<string>>
+                {
+                    [1] = new List<string> { "android-lore", "cleansing-subroutine", "nanite-surge" },
+                    [5] = new List<string> { "advanced-sensors", "proximity-alert" },
+                    [9] = new List<string> { "energy-conduit", "mechanical-symbiosis" },
+                    [13] = new List<string> { "advanced-subroutines", "multitasking-subroutines" },
+                    [17] = new List<string> { "system-reboot", "upgrade-chassis" }
+                },
+                Source = "Starfinder",
+                Rarity = "Rare"
+            },
+
+            ["hobgoblin"] = new PfAncestry
+            {
+                Id = "hobgoblin",
+                Name = "Hobgoblin",
+                Description = "Hobgoblins are a militaristic people who organize their society along military lines. They value discipline, tactics, and achievement in battle above all else.",
+                HitPoints = 8,
+                Size = "Medium",
+                Speeds = new Dictionary<string, int> { ["land"] = 25 },
+                AbilityBoosts = new List<string> { "Constitution", "Intelligence", "Free" },
+                AbilityFlaws = new List<string> { "Wisdom" },
+                FreeAbilityBoosts = new List<string> { "Any" },
+                Languages = new List<string> { "Common", "Goblin" },
+                AdditionalLanguages = 1,
+                Senses = new List<string> { "Darkvision" },
+                SenseRanges = new Dictionary<string, int> { ["darkvision"] = 60 },
+                Traits = new List<string> { "Goblin", "Humanoid" },
+                Features = new List<PfAncestryFeature>(),
+                Heritages = new List<PfHeritage>
+                {
+                    new() { Id = "elfbane", Name = "Elfbane Hobgoblin", Description = "Hobgoblins were engineered long ago from the souls of elves, and some hobgoblins retain animosity toward their ancient enemies. You gain a +1 circumstance bonus to damage rolls against elves and creatures with the elf trait.", Traits = new List<string>() },
+                    new() { Id = "runtboss", Name = "Runtboss Hobgoblin", Description = "You come from a long line of hobgoblins who commanded goblins. You gain the trained proficiency rank in Intimidation. If you're already trained in Intimidation, you instead become trained in a skill of your choice.", Traits = new List<string>() },
+                    new() { Id = "smokeworker", Name = "Smokeworker Hobgoblin", Description = "Your family have been alchemists, engineers, and scientists for generations. You gain fire resistance equal to half your level (minimum 1). You also gain a +1 circumstance bonus to saving throws against inhaled toxins and poison gas.", Traits = new List<string>() },
+                    new() { Id = "steelskin", Name = "Steelskin Hobgoblin", Description = "When you are unarmored or wearing light armor, your tough skin gives you a +1 circumstance bonus to AC instead of your armor's item bonus (use the higher bonus; they don't stack). This bonus increases to +2 against slashing damage.", Traits = new List<string>() },
+                    new() { Id = "warmarch", Name = "Warmarch Hobgoblin", Description = "You come from a line of wandering mercenaries, constantly on the march and scavenging food on the trail. You gain the Forager skill feat, even if you don't meet the prerequisites.", Traits = new List<string>() }
+                },
+                AncestryFeatLevels = new Dictionary<int, List<string>>
+                {
+                    [1] = new List<string> { "hobgoblin-lore", "hobgoblin-weapon-familiarity", "leering-look", "pyroclastic-blast" },
+                    [5] = new List<string> { "formation-training", "hobgoblin-weapon-discipline" },
+                    [9] = new List<string> { "alchemical-Scholar", "hobgoblin-weapon-expertise" },
+                    [13] = new List<string> { "formation-master", "hobgoblin-weapon-specialization" },
+                    [17] = new List<string> { "hobgoblin-weapon-legend" }
+                },
+                Source = "Character Guide",
+                Rarity = "Uncommon"
+            },
+
+            ["kobold"] = new PfAncestry
+            {
+                Id = "kobold",
+                Name = "Kobold",
+                Description = "Every kobold knows that their slight frame belies true, mighty draconic power. They are ingenious crafters and devoted allies within their warrens, but those who trespass into their territory find them to be inspired skirmishers, especially when they have the backing of a draconic sorcerer or true dragon overlord.",
+                HitPoints = 6,
+                Size = "Small",
+                Speeds = new Dictionary<string, int> { ["land"] = 25 },
+                AbilityBoosts = new List<string> { "Dexterity", "Charisma", "Free" },
+                AbilityFlaws = new List<string> { "Constitution" },
+                FreeAbilityBoosts = new List<string> { "Any" },
+                Languages = new List<string> { "Common", "Draconic" },
+                AdditionalLanguages = 1,
+                Senses = new List<string> { "Darkvision" },
+                SenseRanges = new Dictionary<string, int> { ["darkvision"] = 60 },
+                Traits = new List<string> { "Kobold", "Humanoid" },
+                Features = new List<PfAncestryFeature>(),
+                Heritages = new List<PfHeritage>
+                {
+                    new() { Id = "caveclimber", Name = "Caveclimber Kobold", Description = "You live in a vertically oriented home, and you're a consummate climber. You gain the Combat Climber skill feat and a +1 circumstance bonus to Athletics checks to climb.", Traits = new List<string>() },
+                    new() { Id = "dragonscaled", Name = "Dragonscaled Kobold", Description = "Your scales are especially colorful, possessing some of the same resistance a dragon possesses. You gain resistance equal to half your level (minimum 1) to the damage type associated with your draconic exemplar.", Traits = new List<string>() },
+                    new() { Id = "spellscale", Name = "Spellscale Kobold", Description = "A trace of draconic magic flows through you. Choose one cantrip from the arcane spell list. You can cast this cantrip as an arcane innate spell at will.", Traits = new List<string>() },
+                    new() { Id = "strongjaw", Name = "Strongjaw Kobold", Description = "Your bloodline is noted for their powerful jaws and sharp teeth. You gain a jaws unarmed attack that deals 1d6 piercing damage.", Traits = new List<string>() },
+                    new() { Id = "tunnelflood", Name = "Tunnelflood Kobold", Description = "You grew up in a warren crisscrossed by underwater passages, whether natural or excavated. You gain a 15-foot swim Speed.", Traits = new List<string>() },
+                    new() { Id = "venomtail", Name = "Venomtail Kobold", Description = "A vestigial spur in your tail secretes one dose of lethal poison per day. You gain the Tail Toxin action.", Traits = new List<string>() }
+                },
+                AncestryFeatLevels = new Dictionary<int, List<string>>
+                {
+                    [1] = new List<string> { "kobold-lore", "kobold-weapon-familiarity", "dragon-speaker", "snare-crafter" },
+                    [5] = new List<string> { "dragon-magic", "snare-specialist" },
+                    [9] = new List<string> { "kobold-weapon-expertise", "trap-finder" },
+                    [13] = new List<string> { "kobold-weapon-specialization", "greater-drag" },
+                    [17] = new List<string> { "kobold-weapon-legend" }
+                },
+                Source = "Advanced Player's Guide",
+                Rarity = "Uncommon"
+            },
+
+            ["leshy"] = new PfAncestry
+            {
+                Id = "leshy",
+                Name = "Leshy",
+                Description = "Leshys are living plants animated by primal magic. Originally created as guardians of natural locations, many leshys have since awakened to full consciousness and gained the freedom to determine their own paths in life.",
+                HitPoints = 8,
+                Size = "Small",
+                Speeds = new Dictionary<string, int> { ["land"] = 25 },
+                AbilityBoosts = new List<string> { "Constitution", "Wisdom", "Free" },
+                AbilityFlaws = new List<string> { "Intelligence" },
+                FreeAbilityBoosts = new List<string> { "Any" },
+                Languages = new List<string> { "Common", "Sylvan" },
+                AdditionalLanguages = 1,
+                Senses = new List<string> { "Low-Light Vision" },
+                SenseRanges = new Dictionary<string, int>(),
+                Traits = new List<string> { "Leshy", "Plant" },
+                Features = new List<PfAncestryFeature>
+                {
+                    new()
+                    {
+                        Id = "plant",
+                        Name = "Plant",
+                        Description = "You have the plant trait instead of the humanoid trait. Your body is composed of vegetable matter.",
+                        Traits = new List<string>()
+                    },
+                    new()
+                    {
+                        Id = "verdant-metamorphosis",
+                        Name = "Verdant Metamorphosis",
+                        Description = "You know how to enter a restorative, vegetative state. When you take a long rest in an area with adequate sunlight and water, you regain twice as many Hit Points.",
+                        Traits = new List<string>()
+                    }
+                },
+                Heritages = new List<PfHeritage>
+                {
+                    new() { Id = "fungus", Name = "Fungus Leshy", Description = "Your body was made from fungi that grows in the shade of caves and trees, and you are at home in dark caverns and shadowy forest floors. You gain darkvision.", Traits = new List<string>() },
+                    new() { Id = "gourd", Name = "Gourd Leshy", Description = "You have a large gourd for a skull. Your knowledge comes from within your seeds, which rattle around inside your head. You gain the trained proficiency rank in Occultism.", Traits = new List<string>() },
+                    new() { Id = "leaf", Name = "Leaf Leshy", Description = "Your body is made mostly from leaves. You gain gliding wings that allow you to fall slowly. As long as you can act, you take no damage from falls of any distance.", Traits = new List<string>() },
+                    new() { Id = "lotus", Name = "Lotus Leshy", Description = "You effortlessly float on the surface of water. You can walk on the surface of still water and similar liquids, moving at half your normal Speed.", Traits = new List<string>() },
+                    new() { Id = "pine", Name = "Pine Leshy", Description = "Your body is made from the hardy wood of a pine tree. You gain cold resistance equal to half your level (minimum 1), and your unarmed attacks deal 1 additional damage.", Traits = new List<string>() },
+                    new() { Id = "vine", Name = "Vine Leshy", Description = "The prehensile vines woven into your body grant you unmatched skill at climbing. You gain a 10-foot climb Speed.", Traits = new List<string>() }
+                },
+                AncestryFeatLevels = new Dictionary<int, List<string>>
+                {
+                    [1] = new List<string> { "leshy-lore", "leshy-superstition", "seedpod" },
+                    [5] = new List<string> { "bark-skin", "speak-with-kindred" },
+                    [9] = new List<string> { "effortless-concentration", "wind-chime" },
+                    [13] = new List<string> { "regrowth", "solar-rejuvenation" },
+                    [17] = new List<string> { "verdant-weapon" }
+                },
+                Source = "Character Guide",
+                Rarity = "Uncommon"
+            },
+
+            ["lizardfolk"] = new PfAncestry
+            {
+                Id = "lizardfolk",
+                Name = "Lizardfolk",
+                Description = "These reptilian humanoids are natural survivors with powerful jaws and tough scales. Lizardfolk move through the societies of other humanoids with an awareness of their alien perspective.",
+                HitPoints = 8,
+                Size = "Medium",
+                Speeds = new Dictionary<string, int> { ["land"] = 25, ["swim"] = 15 },
+                AbilityBoosts = new List<string> { "Strength", "Wisdom", "Free" },
+                AbilityFlaws = new List<string> { "Intelligence" },
+                FreeAbilityBoosts = new List<string> { "Any" },
+                Languages = new List<string> { "Common", "Draconic" },
+                AdditionalLanguages = 1,
+                Senses = new List<string>(),
+                SenseRanges = new Dictionary<string, int>(),
+                Traits = new List<string> { "Humanoid", "Lizardfolk" },
+                Features = new List<PfAncestryFeature>
+                {
+                    new()
+                    {
+                        Id = "claws",
+                        Name = "Claws",
+                        Description = "You have sharp claws that can be used as weapons. You gain claw unarmed attacks that deal 1d4 slashing damage and have the agile and finesse traits.",
+                        Traits = new List<string>()
+                    },
+                    new()
+                    {
+                        Id = "aquatic-adaptation",
+                        Name = "Aquatic Adaptation", 
+                        Description = "Your reptilian biology allows you to hold your breath for a long time. You can hold your breath for 25 rounds (2.5 minutes) before you start suffocating.",
+                        Traits = new List<string>()
+                    }
+                },
+                Heritages = new List<PfHeritage>
+                {
+                    new() { Id = "cliffscale", Name = "Cliffscale Lizardfolk", Description = "Your toes are adapted for gripping and climbing. You gain the Combat Climber skill feat and a +2 circumstance bonus to your Reflex DC against attempts to Shove or Trip you.", Traits = new List<string>() },
+                    new() { Id = "frilled", Name = "Frilled Lizardfolk", Description = "You can flare your neck frill and flex your dorsal spines, Demoralizing your enemies. When you do, Demoralize loses the auditory trait and gains the visual trait, and you don't take a penalty when you attempt to Demoralize a creature that doesn't understand your language.", Traits = new List<string>() },
+                    new() { Id = "sandstrider", Name = "Sandstrider Lizardfolk", Description = "Your thick scales help you retain water and energy, and your wide feet better distribute your weight for desert travel. You need only a single serving of food and water each week to avoid starvation or dehydration.", Traits = new List<string>() },
+                    new() { Id = "unseen", Name = "Unseen Lizardfolk", Description = "Your skin shifts coloration rapidly when you're in danger. When you roll a critical failure on a Stealth check to Hide, you get a failure instead. When you roll a success, you get a critical success instead.", Traits = new List<string>() },
+                    new() { Id = "wetlander", Name = "Wetlander Lizardfolk", Description = "Your family is from an aquatic community, continuing to swim in the rivers or lakes of your ancestors. You gain a 15-foot swim Speed.", Traits = new List<string>() },
+                    new() { Id = "woodstalker", Name = "Woodstalker Lizardfolk", Description = "You move carefully through thick forest and jungle, leaving few traces. You can move through difficult terrain caused by plants at half your Speed (instead of one-quarter), and you leave fewer traces when moving through natural surroundings.", Traits = new List<string>() }
+                },
+                AncestryFeatLevels = new Dictionary<int, List<string>>
+                {
+                    [1] = new List<string> { "hunter-lizardfolk", "lizardfolk-lore", "razor-claws", "swim-speed" },
+                    [5] = new List<string> { "gecko-grip", "hunting-group" },
+                    [9] = new List<string> { "bone-magic", "terrain-advantage" },
+                    [13] = new List<string> { "dragon-speaker", "envenom-fangs" },
+                    [17] = new List<string> { "scion-transformation" }
+                },
+                Source = "Character Guide",
+                Rarity = "Uncommon"
+            },
+
+            ["orc"] = new PfAncestry
+            {
+                Id = "orc",
+                Name = "Orc",
+                Description = "Orcs are forged in the fires of violence and conflict, often from the moment they're born. As they live lives that are frequently cut short, orcs revel in testing their strength against worthy foes, whether by challenging a higher-ranking member of their community or raiding a neighboring settlement.",
+                HitPoints = 10,
+                Size = "Medium",
+                Speeds = new Dictionary<string, int> { ["land"] = 25 },
+                AbilityBoosts = new List<string> { "Strength", "Free", "Free" },
+                AbilityFlaws = new List<string>(),
+                FreeAbilityBoosts = new List<string> { "Any", "Any" },
+                Languages = new List<string> { "Common", "Orcish" },
+                AdditionalLanguages = 1,
+                Senses = new List<string> { "Darkvision" },
+                SenseRanges = new Dictionary<string, int> { ["darkvision"] = 60 },
+                Traits = new List<string> { "Humanoid", "Orc" },
+                Features = new List<PfAncestryFeature>(),
+                Heritages = new List<PfHeritage>
+                {
+                    new() { Id = "badlands", Name = "Badlands Orc", Description = "You come from sun-scorched badlands, where long legs and an efficient stride were key to survival. You can Hustle twice as long while exploring before you have to stop.", Traits = new List<string>() },
+                    new() { Id = "battle-ready", Name = "Battle-Ready Orc", Description = "You descend from a line of terrifying battlefield commanders. You become trained in Intimidation, and you can use Intimidation to Demoralize your foes even if you don't share a language with them.", Traits = new List<string>() },
+                    new() { Id = "deep", Name = "Deep Orc", Description = "Your calloused hands and red eyes speak to a life spent in the deep darkness of mountain caverns. You gain darkvision with a range of 120 feet instead of 60 feet.", Traits = new List<string>() },
+                    new() { Id = "hold-scarred", Name = "Hold-Scarred Orc", Description = "You or your ancestors have lived underground. You gain fire resistance equal to half your level (minimum 1), and you treat environmental heat effects as if they were one step less extreme.", Traits = new List<string>() },
+                    new() { Id = "rainfall", Name = "Rainfall Orc", Description = "You were born in the aftermath of a great storm, or you have a supernatural connection to storms. You can go 10 minutes longer than normal before you have to attempt a Constitution check when holding your breath.", Traits = new List<string>() },
+                    new() { Id = "winter", Name = "Winter Orc", Description = "Your ancestors survived in cold climates. You gain cold resistance equal to half your level (minimum 1), and you treat environmental cold effects as if they were one step less extreme.", Traits = new List<string>() }
+                },
+                AncestryFeatLevels = new Dictionary<int, List<string>>
+                {
+                    [1] = new List<string> { "bloody-blows", "icon-of-strength", "orc-lore", "orc-sight", "orc-superstition", "orc-weapon-familiarity" },
+                    [5] = new List<string> { "orc-ferocity", "orc-weapon-carnage", "victorious-vigor" },
+                    [9] = new List<string> { "instinctive-obstructions", "orc-weapon-expertise", "pervasive-superstition" },
+                    [13] = new List<string> { "deathless-ferocity", "orc-weapon-specialization", "scar-thick-skin" },
+                    [17] = new List<string> { "orc-weapon-legend", "unbreakable-ferocity" }
+                },
+                Source = "Advanced Player's Guide",
+                Rarity = "Uncommon"
+            },
+
+            ["ratfolk"] = new PfAncestry
+            {
+                Id = "ratfolk",
+                Name = "Ratfolk",
+                Description = "Ysoki—as ratfolk call themselves—are a clever, adaptable, and fastidious ancestry who happily crowd their large families into the smallest living spaces they can find.",
+                HitPoints = 6,
+                Size = "Small",
+                Speeds = new Dictionary<string, int> { ["land"] = 25 },
+                AbilityBoosts = new List<string> { "Dexterity", "Intelligence", "Free" },
+                AbilityFlaws = new List<string> { "Strength" },
+                FreeAbilityBoosts = new List<string> { "Any" },
+                Languages = new List<string> { "Common", "Ysoki" },
+                AdditionalLanguages = 1,
+                Senses = new List<string> { "Low-Light Vision" },
+                SenseRanges = new Dictionary<string, int>(),
+                Traits = new List<string> { "Humanoid", "Ratfolk" },
+                Features = new List<PfAncestryFeature>
+                {
+                    new()
+                    {
+                        Id = "cheek-pouches",
+                        Name = "Cheek Pouches",
+                        Description = "You have cheek pouches that let you store up to four items of light Bulk inside your mouth, out of the hands of pickpockets and thieves. If you speak, any items fall out of your mouth.",
+                        Traits = new List<string>()
+                    }
+                },
+                Heritages = new List<PfHeritage>
+                {
+                    new() { Id = "deep", Name = "Deep Rat", Description = "Your ancestors lived deeper underground than most ratfolk. You gain darkvision instead of low-light vision.", Traits = new List<string>() },
+                    new() { Id = "desert", Name = "Desert Rat", Description = "You come from deep in the desert where water is scarce but dangerous creatures abound. You can go twice as long as normal before you're affected by starvation or thirst. Additionally, you gain a +2 circumstance bonus to Fortitude saves against diseases.", Traits = new List<string>() },
+                    new() { Id = "longsnout", Name = "Longsnout Rat", Description = "The long snout common among your family gives you a keener sense of smell than most ratfolk. You gain imprecise scent with a range of 30 feet.", Traits = new List<string>() },
+                    new() { Id = "sewer", Name = "Sewer Rat", Description = "You come from a long line of ysoki with a tolerance for filth and disease. You gain a +2 circumstance bonus to saving throws against diseases and the sickened condition.", Traits = new List<string>() },
+                    new() { Id = "shadow", Name = "Shadow Rat", Description = "Your ancestors lived in dark spaces underground. You gain greater darkvision instead of low-light vision, allowing you to see in complete darkness.", Traits = new List<string>() },
+                    new() { Id = "tunnel", Name = "Tunnel Rat", Description = "You can squeeze through tight spaces as if you were one size smaller, and you can move at full Speed while squeezing.", Traits = new List<string>() }
+                },
+                AncestryFeatLevels = new Dictionary<int, List<string>>
+                {
+                    [1] = new List<string> { "ratfolk-lore", "ratfolk-weapon-familiarity", "plague-sniffer", "tinkering" },
+                    [5] = new List<string> { "cheek-pouches", "ratfolk-weapon-innovator" },
+                    [9] = new List<string> { "ratfolk-weapon-expertise", "tunnel-rat-climber" },
+                    [13] = new List<string> { "ratfolk-weapon-specialization", "unassuming-dedication" },
+                    [17] = new List<string> { "ratfolk-weapon-legend" }
+                },
+                Source = "Advanced Player's Guide",
+                Rarity = "Uncommon"
+            },
+
+            ["tengu"] = new PfAncestry
+            {
+                Id = "tengu",
+                Name = "Tengu",
+                Description = "Tengus are a gregarious and resourceful people that have spread far and wide from their ancestral home in Tian Xia, collecting and combining whatever innovations and traditions they happen across with those from their own long history.",
+                HitPoints = 6,
+                Size = "Medium",
+                Speeds = new Dictionary<string, int> { ["land"] = 25 },
+                AbilityBoosts = new List<string> { "Dexterity", "Free", "Free" },
+                AbilityFlaws = new List<string>(),
+                FreeAbilityBoosts = new List<string> { "Any", "Any" },
+                Languages = new List<string> { "Common", "Tengu" },
+                AdditionalLanguages = 2,
+                Senses = new List<string> { "Low-Light Vision" },
+                SenseRanges = new Dictionary<string, int>(),
+                Traits = new List<string> { "Humanoid", "Tengu" },
+                Features = new List<PfAncestryFeature>
+                {
+                    new()
+                    {
+                        Id = "sharp-beak",
+                        Name = "Sharp Beak",
+                        Description = "With your sharp beak, you are never without a weapon. You have a beak unarmed attack that deals 1d6 piercing damage. Your beak is in the brawling weapon group and has the finesse and unarmed traits.",
+                        Traits = new List<string>()
+                    }
+                },
+                Heritages = new List<PfHeritage>
+                {
+                    new() { Id = "dogtooth", Name = "Dogtooth Tengu", Description = "Your ancestors were known for their vicious, serrated beaks. Your beak unarmed attack gains the deadly d6 trait.", Traits = new List<string>() },
+                    new() { Id = "jinxed", Name = "Jinxed Tengu", Description = "Your lineage has been exposed to curse energy or magics, granting you a twisted kind of luck. You gain the Dubious Knowledge skill feat. When you succeed at a Perception check or skill check, you can choose to critically fail instead. If you do, reroll the triggering check with a +4 circumstance bonus; this is a fortune effect.", Traits = new List<string>() },
+                    new() { Id = "mountain", Name = "Mountain Tengu", Description = "You were born in high altitudes, such as mountain peaks or flying cities, and you can easily handle thin air. You don't need to attempt Fortitude saves from high altitudes, regardless of how quickly you ascended.", Traits = new List<string>() },
+                    new() { Id = "stormtossed", Name = "Stormtossed Tengu", Description = "Whether due to a blessing from the kami of storms or simply a legacy of ancient magic in your bloodline, you can predict weather patterns. You can cast augury as a divine innate spell once per day, but only to predict weather-related events.", Traits = new List<string>() },
+                    new() { Id = "wavediver", Name = "Wavediver Tengu", Description = "Your wings are especially large and adapted for soaring over water. You gain a 10-foot status bonus to your fly Speed, if you have one.", Traits = new List<string>() },
+                    new() { Id = "windcaller", Name = "Windcaller Tengu", Description = "You have a connection to spirits of wind and sky. You can cast ghost sound as an occult innate cantrip at will.", Traits = new List<string>() }
+                },
+                AncestryFeatLevels = new Dictionary<int, List<string>>
+                {
+                    [1] = new List<string> { "eat-fortune", "long-nose", "storm-sight", "tengu-lore", "tengu-weapon-familiarity" },
+                    [5] = new List<string> { "crowlike-dodge", "hurricane-swing", "tengu-weapon-study" },
+                    [9] = new List<string> { "carrion-sight", "descending-winds", "tengu-weapon-expertise" },
+                    [13] = new List<string> { "fortune-telling", "tengu-weapon-specialization", "wanderer-lore" },
+                    [17] = new List<string> { "eclipse-eyes", "tengu-weapon-legend" }
+                },
+                Source = "Advanced Player's Guide", 
+                Rarity = "Uncommon"
             }
         };
     }

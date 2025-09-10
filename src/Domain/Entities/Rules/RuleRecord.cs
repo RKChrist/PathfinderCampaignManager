@@ -11,7 +11,9 @@ public enum RuleCategory
     Environment,
     Spellcasting,
     Exploration,
-    Items
+    Items,
+    GMTools,
+    Subsystems
 }
 
 public enum RuleContentType

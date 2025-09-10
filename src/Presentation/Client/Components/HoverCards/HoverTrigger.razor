@@ -33,16 +33,29 @@
         
         // Cancel any existing timer
         _hoverTimer?.Dispose();
+        _hoverTimer = null;
         
         // Start delay timer
         _hoverTimer = new Timer(async _ =>
         {
-            if (_isHovering)
+            // Ensure we're still hovering and the component is still valid
+            if (_isHovering && _objRef != null)
             {
-                await InvokeAsync(async () =>
+                try
                 {
-                    await OnHoverStart.InvokeAsync(e);
-                });
+                    await InvokeAsync(async () =>
+                    {
+                        if (_isHovering) // Double check before triggering
+                        {
+                            await OnHoverStart.InvokeAsync(e);
+                        }
+                    });
+                }
+                catch (Exception ex)
+                {
+                    // Silently handle disposed component errors
+                    Console.WriteLine($"HoverTrigger error: {ex.Message}");
+                }
             }
         }, null, DelayMs, Timeout.Infinite);
     }
@@ -51,11 +64,22 @@
     {
         _isHovering = false;
         
-        // Cancel timer
-        _hoverTimer?.Dispose();
-        _hoverTimer = null;
+        // Cancel timer immediately
+        if (_hoverTimer != null)
+        {
+            _hoverTimer.Dispose();
+            _hoverTimer = null;
+        }
         
-        await OnHoverEnd.InvokeAsync(e);
+        // Always trigger hover end to ensure cards are properly hidden
+        try
+        {
+            await OnHoverEnd.InvokeAsync(e);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"HoverTrigger OnMouseLeave error: {ex.Message}");
+        }
     }
 
     private async Task OnClickAsync(MouseEventArgs e)
